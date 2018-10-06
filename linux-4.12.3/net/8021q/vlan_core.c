@@ -12,7 +12,7 @@ bool vlan_do_receive(struct sk_buff **skbp)
 	u16 vlan_id = skb_vlan_tag_get_id(skb);
 	struct net_device *vlan_dev;
 	struct vlan_pcpu_stats *rx_stats;
-//yyf: skb中取出vlan协议和vlan id，从而找到对应的vlan网口设备
+
 	vlan_dev = vlan_find_dev(skb->dev, vlan_proto, vlan_id);
 	if (!vlan_dev)
 		return false;
@@ -21,13 +21,13 @@ bool vlan_do_receive(struct sk_buff **skbp)
 	if (unlikely(!skb))
 		return false;
 
-	skb->dev = vlan_dev;//yyf: 这里给vlan设备
+	skb->dev = vlan_dev;
 	if (unlikely(skb->pkt_type == PACKET_OTHERHOST)) {
 		/* Our lower layer thinks this is not local, let's make sure.
 		 * This allows the VLAN to have a different MAC than the
 		 * underlying device, and still route correctly. */
 		if (ether_addr_equal_64bits(eth_hdr(skb)->h_dest, vlan_dev->dev_addr))
-			skb->pkt_type = PACKET_HOST;//yyf: 如果报文中的mac地址和vlan的mac地址一样，则是HOST
+			skb->pkt_type = PACKET_HOST;
 	}
 
 	if (!(vlan_dev_priv(vlan_dev)->flags & VLAN_FLAG_REORDER_HDR) &&
@@ -48,12 +48,12 @@ bool vlan_do_receive(struct sk_buff **skbp)
 		skb_pull(skb, offset + VLAN_HLEN);
 		skb_reset_mac_len(skb);
 	}
-//yyf: 从ingress_priority_map取出给skb->priority
+
 	skb->priority = vlan_get_ingress_priority(vlan_dev, skb->vlan_tci);
-	skb->vlan_tci = 0;//yyf: vlan_tci清0
+	skb->vlan_tci = 0;
 
 	rx_stats = this_cpu_ptr(vlan_dev_priv(vlan_dev)->vlan_pcpu_stats);
-//yyf: 统计
+
 	u64_stats_update_begin(&rx_stats->syncp);
 	rx_stats->rx_packets++;
 	rx_stats->rx_bytes += skb->len;

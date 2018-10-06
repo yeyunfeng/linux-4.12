@@ -201,7 +201,7 @@ static struct buffer_head *
 __find_get_block_slow(struct block_device *bdev, sector_t block)
 {
 	struct inode *bd_inode = bdev->bd_inode;
-	struct address_space *bd_mapping = bd_inode->i_mapping;//yyf: 块设备到inode，到mapping
+	struct address_space *bd_mapping = bd_inode->i_mapping;
 	struct buffer_head *ret = NULL;
 	pgoff_t index;
 	struct buffer_head *bh;
@@ -217,7 +217,7 @@ __find_get_block_slow(struct block_device *bdev, sector_t block)
 	spin_lock(&bd_mapping->private_lock);
 	if (!page_has_buffers(page))
 		goto out_unlock;
-	head = page_buffers(page);//yyf: 如果page是bh的，则找bh
+	head = page_buffers(page);
 	bh = head;
 	do {
 		if (!buffer_mapped(bh))
@@ -260,7 +260,7 @@ static void free_more_memory(void)
 	struct zoneref *z;
 	int nid;
 
-	wakeup_flusher_threads(1024, WB_REASON_FREE_MORE_MEM);//yyf: 唤醒flusher进程
+	wakeup_flusher_threads(1024, WB_REASON_FREE_MORE_MEM);
 	yield();
 
 	for_each_online_node(nid) {
@@ -597,8 +597,8 @@ void write_boundary_block(struct block_device *bdev,
 
 void mark_buffer_dirty_inode(struct buffer_head *bh, struct inode *inode)
 {
-	struct address_space *mapping = inode->i_mapping;//yyf: 这个是inode的缓存
-	struct address_space *buffer_mapping = bh->b_page->mapping; //yyf: 这个是page对应的mapping，有可能是块设备inode的mapping
+	struct address_space *mapping = inode->i_mapping;
+	struct address_space *buffer_mapping = bh->b_page->mapping;
 
 	mark_buffer_dirty(bh);
 	if (!mapping->private_data) {
@@ -609,7 +609,7 @@ void mark_buffer_dirty_inode(struct buffer_head *bh, struct inode *inode)
 	if (!bh->b_assoc_map) {
 		spin_lock(&buffer_mapping->private_lock);
 		list_move_tail(&bh->b_assoc_buffers,
-				&mapping->private_list); //yyf: 将buffer_head挂到mapping->private_list链表
+				&mapping->private_list);
 		bh->b_assoc_map = mapping;
 		spin_unlock(&buffer_mapping->private_lock);
 	}
@@ -742,7 +742,7 @@ static int fsync_buffers_list(spinlock_t *lock, struct list_head *list)
 		 * a lockless check and we rely on seeing the dirty bit */
 		smp_mb();
 		if (buffer_dirty(bh) || buffer_locked(bh)) {
-			list_add(&bh->b_assoc_buffers, &tmp); //yyf: bh挂到tmp链表
+			list_add(&bh->b_assoc_buffers, &tmp);
 			bh->b_assoc_map = mapping;
 			if (buffer_dirty(bh)) {
 				get_bh(bh);
@@ -754,7 +754,7 @@ static int fsync_buffers_list(spinlock_t *lock, struct list_head *list)
 				 * still in flight on potentially older
 				 * contents.
 				 */
-				write_dirty_buffer(bh, REQ_SYNC); //yyf: 提交buffer_head到IO
+				write_dirty_buffer(bh, REQ_SYNC);
 
 				/*
 				 * Kick off IO for the previous mapping. Note
@@ -782,11 +782,11 @@ static int fsync_buffers_list(spinlock_t *lock, struct list_head *list)
 		smp_mb();
 		if (buffer_dirty(bh)) {
 			list_add(&bh->b_assoc_buffers,
-				 &mapping->private_list); //yyf: 如果由于脏数据，则重新挂回到mapping->private_list链表
+				 &mapping->private_list);
 			bh->b_assoc_map = mapping;
 		}
 		spin_unlock(lock);
-		wait_on_buffer(bh); //yyf: 等待下发的IO完成
+		wait_on_buffer(bh);
 		if (!buffer_uptodate(bh))
 			err = -EIO;
 		brelse(bh);
@@ -794,7 +794,7 @@ static int fsync_buffers_list(spinlock_t *lock, struct list_head *list)
 	}
 	
 	spin_unlock(lock);
-	err2 = osync_buffers_list(lock, list); //yyf: 等待list上的bh全部IO完成
+	err2 = osync_buffers_list(lock, list);
 	if (err)
 		return err;
 	else
@@ -819,7 +819,7 @@ void invalidate_inode_buffers(struct inode *inode)
 
 		spin_lock(&buffer_mapping->private_lock);
 		while (!list_empty(list))
-			__remove_assoc_queue(BH_ENTRY(list->next));//yyf: bh从mapping->private_list链表中删除
+			__remove_assoc_queue(BH_ENTRY(list->next));
 		spin_unlock(&buffer_mapping->private_lock);
 	}
 }
@@ -843,7 +843,7 @@ int remove_inode_buffers(struct inode *inode)
 		spin_lock(&buffer_mapping->private_lock);
 		while (!list_empty(list)) {
 			struct buffer_head *bh = BH_ENTRY(list->next);
-			if (buffer_dirty(bh)) { //yyf: 只删除非dirty的bh
+			if (buffer_dirty(bh)) {
 				ret = 0;
 				break;
 			}
@@ -873,7 +873,7 @@ try_again:
 	head = NULL;
 	offset = PAGE_SIZE;
 	while ((offset -= size) >= 0) {
-		bh = alloc_buffer_head(GFP_NOFS);//yyf: 申请个buffer_head结构
+		bh = alloc_buffer_head(GFP_NOFS);
 		if (!bh)
 			goto no_grow;
 
@@ -1325,12 +1325,12 @@ lookup_bh_lru(struct block_device *bdev, sector_t block, unsigned size)
 	check_irqs_on();
 	bh_lru_lock();
 	for (i = 0; i < BH_LRU_SIZE; i++) {
-		struct buffer_head *bh = __this_cpu_read(bh_lrus.bhs[i]);//yyf: 从lru缓存先找bh，缓存是percpu，16个数组
-//yyf: 如果block一样，bdev一样，size一样，则匹配
+		struct buffer_head *bh = __this_cpu_read(bh_lrus.bhs[i]);
+
 		if (bh && bh->b_blocknr == block && bh->b_bdev == bdev &&
 		    bh->b_size == size) {
 			if (i) {
-				while (i) {//yyf: 调整缓存数组顺序，把刚找到的bh移到第1个位置
+				while (i) {
 					__this_cpu_write(bh_lrus.bhs[i],
 						__this_cpu_read(bh_lrus.bhs[i - 1]));
 					i--;
@@ -3124,7 +3124,7 @@ static int submit_bh_wbc(int op, int op_flags, struct buffer_head *bh,
 	bio_add_page(bio, bh->b_page, bh->b_size, bh_offset(bh));
 	BUG_ON(bio->bi_iter.bi_size != bh->b_size);
 
-	bio->bi_end_io = end_bio_bh_io_sync; //yyf: 执行bh的回调 bh->b_end_io
+	bio->bi_end_io = end_bio_bh_io_sync;
 	bio->bi_private = bh;
 
 	/* Take care of bh's that straddle the end of the device */
@@ -3228,7 +3228,7 @@ int __sync_dirty_buffer(struct buffer_head *bh, int op_flags)
 	if (test_clear_buffer_dirty(bh)) {
 		get_bh(bh);
 		bh->b_end_io = end_buffer_write_sync;
-		ret = submit_bh(REQ_OP_WRITE, op_flags, bh); //yyf: 下发IO
+		ret = submit_bh(REQ_OP_WRITE, op_flags, bh);
 		wait_on_buffer(bh);
 		if (!ret && !buffer_uptodate(bh))
 			ret = -EIO;

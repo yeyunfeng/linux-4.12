@@ -166,7 +166,7 @@ struct request {
 	 */
 	union {
 		struct hlist_node hash;	/* merge hash */
-		struct list_head ipi_list; //yyf: softirq completion的时候用
+		struct list_head ipi_list;
 	};
 
 	/*
@@ -795,17 +795,15 @@ static inline void blk_clear_rl_full(struct request_list *rl, bool sync)
 
 static inline bool rq_mergeable(struct request *rq)
 {
-    //yyf: 如果是passthrough,即是scsi请求或者驱动私有请求，则不能merge
 	if (blk_rq_is_passthrough(rq))
 		return false;
-    
-//yyf: 如果是flush，REQ_OP_WRITE_ZEROES，不能merge
+
 	if (req_op(rq) == REQ_OP_FLUSH)
 		return false;
 
 	if (req_op(rq) == REQ_OP_WRITE_ZEROES)
 		return false;
-//yyf: 如果标记是NO_MERGE，则不能merge
+
 	if (rq->cmd_flags & REQ_NOMERGE_FLAGS)
 		return false;
 	if (rq->rq_flags & RQF_NOMERGE_FLAGS)

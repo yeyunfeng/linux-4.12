@@ -367,8 +367,7 @@ int scsi_dev_info_list_add_keyed(int compatible, char *vendor, char *model,
 
 	if (IS_ERR(devinfo_table))
 		return PTR_ERR(devinfo_table);
-    
-//yyf: ÉêÇë¸öscsi_dev_info_list½á¹¹
+
 	devinfo = kmalloc(sizeof(*devinfo), GFP_KERNEL);
 	if (!devinfo) {
 		printk(KERN_ERR "%s: no memory\n", __func__);

@@ -170,7 +170,6 @@ int register_vlan_dev(struct net_device *dev)
 		goto out_uninit_mvrp;
 
 	vlan->nest_level = dev_get_nest_level(real_dev) + 1;
-//yyf: 注册网口设备
 	err = register_netdevice(dev);
 	if (err < 0)
 		goto out_uninit_mvrp;
@@ -714,7 +713,7 @@ static int __net_init vlan_init_net(struct net *net)
 {
 	struct vlan_net *vn = net_generic(net, vlan_net_id);
 	int err;
-//yyf: 网口名称格式类型
+
 	vn->name_type = VLAN_NAME_TYPE_RAW_PLUS_VID_NO_PAD;
 
 	err = vlan_proc_init(net);
@@ -730,8 +729,8 @@ static void __net_exit vlan_exit_net(struct net *net)
 static struct pernet_operations vlan_net_ops = {
 	.init = vlan_init_net,
 	.exit = vlan_exit_net,
-	.id   = &vlan_net_id,//yyf: net通过ng成员，以id为数组下标，指向size大小的数据区
-	.size = sizeof(struct vlan_net),//yyf: 每个 net结构里会分配的数据，在init执行时对这个数据操作
+	.id   = &vlan_net_id,
+	.size = sizeof(struct vlan_net),
 };
 
 static int __init vlan_proto_init(void)
@@ -740,7 +739,7 @@ static int __init vlan_proto_init(void)
 	unsigned int i;
 
 	pr_info("%s v%s\n", vlan_fullname, vlan_version);
-//yyf: 对每个net space执行pernet init函数
+
 	err = register_pernet_subsys(&vlan_net_ops);
 	if (err < 0)
 		goto err0;

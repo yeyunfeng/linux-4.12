@@ -298,7 +298,7 @@ static inline void bforget(struct buffer_head *bh)
 
 static inline struct buffer_head *
 sb_bread(struct super_block *sb, sector_t block)
-{//yyf: 从block块开始，读1个块
+{
 	return __bread_gfp(sb->s_bdev, block, sb->s_blocksize, __GFP_MOVABLE);
 }
 

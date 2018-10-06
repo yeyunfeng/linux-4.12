@@ -246,7 +246,7 @@ static struct net *vlan_get_link_net(const struct net_device *dev)
 {
 	struct net_device *real_dev = vlan_dev_priv(dev)->real_dev;
 
-	return dev_net(real_dev);//yyf: 物理口的net
+	return dev_net(real_dev);
 }
 
 struct rtnl_link_ops vlan_link_ops __read_mostly = {

@@ -25,7 +25,7 @@ static inline bool not_found(struct page_vma_mapped_walk *pvmw)
 
 static bool map_pte(struct page_vma_mapped_walk *pvmw)
 {
-	pvmw->pte = pte_offset_map(pvmw->pmd, pvmw->address);//yyf: 将地址对应的pte保存到pvmw
+	pvmw->pte = pte_offset_map(pvmw->pmd, pvmw->address);
 	if (!(pvmw->flags & PVMW_SYNC)) {
 		if (pvmw->flags & PVMW_MIGRATION) {
 			if (!is_swap_pte(*pvmw->pte))
@@ -35,7 +35,7 @@ static bool map_pte(struct page_vma_mapped_walk *pvmw)
 				return false;
 		}
 	}
-	pvmw->ptl = pte_lockptr(pvmw->vma->vm_mm, pvmw->pmd);//yyf: pmd所在page结构的spinlock
+	pvmw->ptl = pte_lockptr(pvmw->vma->vm_mm, pvmw->pmd);
 	spin_lock(pvmw->ptl);
 	return true;
 }

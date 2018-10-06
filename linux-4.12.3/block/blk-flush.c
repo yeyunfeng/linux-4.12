@@ -509,7 +509,7 @@ int blkdev_issue_flush(struct block_device *bdev, gfp_t gfp_mask,
 	if (bdev->bd_disk == NULL)
 		return -ENXIO;
 
-	q = bdev_get_queue(bdev);//yyf: 通过disk找到queue
+	q = bdev_get_queue(bdev);
 	if (!q)
 		return -ENXIO;
 
@@ -522,7 +522,7 @@ int blkdev_issue_flush(struct block_device *bdev, gfp_t gfp_mask,
 	if (!q->make_request_fn)
 		return -ENXIO;
 
-	bio = bio_alloc(gfp_mask, 0); //yyf:  bio不带数据，就为了FLUSH
+	bio = bio_alloc(gfp_mask, 0);
 	bio->bi_bdev = bdev;
 	bio->bi_opf = REQ_OP_WRITE | REQ_PREFLUSH;
 

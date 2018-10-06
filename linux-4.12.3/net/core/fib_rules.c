@@ -258,7 +258,7 @@ int fib_rules_lookup(struct fib_rules_ops *ops, struct flowi *fl,
 
 	rcu_read_lock();
 
-	list_for_each_entry_rcu(rule, &ops->rules_list, list) {//yyf: ±éÀúÁ´±í²éÕÒ
+	list_for_each_entry_rcu(rule, &ops->rules_list, list) {
 jumped:
 		if (!fib_rule_match(rule, ops, fl, flags, arg))
 			continue;

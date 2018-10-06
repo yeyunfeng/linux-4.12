@@ -195,7 +195,7 @@ static void wb_queue_work(struct bdi_writeback *wb,
 	spin_lock_bh(&wb->work_lock);
 
 	if (test_bit(WB_registered, &wb->state)) {
-		list_add_tail(&work->list, &wb->work_list);//yyf: work加入到wb的work_list链表
+		list_add_tail(&work->list, &wb->work_list);
 		mod_delayed_work(bdi_wq, &wb->dwork, 0);
 	} else
 		finish_writeback_work(wb, work);
@@ -266,7 +266,7 @@ void __inode_attach_wb(struct inode *inode, struct page *page)
 	 * There may be multiple instances of this function racing to
 	 * update the same inode.  Use cmpxchg() to tell the winner.
 	 */
-	if (unlikely(cmpxchg(&inode->i_wb, NULL, wb))) //yyf: 原子方式更新inode的i_wb指针，执行wb结构
+	if (unlikely(cmpxchg(&inode->i_wb, NULL, wb)))
 		wb_put(wb);
 }
 
@@ -908,7 +908,7 @@ locked_inode_to_wb_and_lock_list(struct inode *inode)
 static struct bdi_writeback *inode_to_wb_and_lock_list(struct inode *inode)
 	__acquires(&wb->list_lock)
 {
-	struct bdi_writeback *wb = inode_to_wb(inode);//yyf: inode到super_block，到wb
+	struct bdi_writeback *wb = inode_to_wb(inode);
 
 	spin_lock(&wb->list_lock);
 	return wb;
@@ -959,7 +959,7 @@ void wb_start_writeback(struct bdi_writeback *wb, long nr_pages,
 	work->reason	= reason;
 	work->auto_free	= 1;
 
-	wb_queue_work(wb, work);//yyf: 提交个work到wb
+	wb_queue_work(wb, work);
 }
 
 /**
@@ -1005,7 +1005,7 @@ void sb_mark_inode_writeback(struct inode *inode)
 	if (list_empty(&inode->i_wb_list)) {
 		spin_lock_irqsave(&sb->s_inode_wblist_lock, flags);
 		if (list_empty(&inode->i_wb_list)) {
-			list_add_tail(&inode->i_wb_list, &sb->s_inodes_wb);//yyf: 将inode挂到超级块sb->s_inodes_wb链表
+			list_add_tail(&inode->i_wb_list, &sb->s_inodes_wb);
 			trace_sb_mark_inode_writeback(inode);
 		}
 		spin_unlock_irqrestore(&sb->s_inode_wblist_lock, flags);
@@ -1063,7 +1063,7 @@ static void inode_sync_complete(struct inode *inode)
 {
 	inode->i_state &= ~I_SYNC;
 	/* If inode is clean an unused, put it into LRU now... */
-	inode_add_lru(inode); //yyf: inode加入到sb->s_inode_lru
+	inode_add_lru(inode);
 	/* Waiters must see I_SYNC cleared before being woken up */
 	smp_mb();
 	wake_up_bit(&inode->i_state, __I_SYNC);
@@ -1316,7 +1316,7 @@ __writeback_single_inode(struct inode *inode, struct writeback_control *wbc)
 
 	trace_writeback_single_inode_start(inode, wbc, nr_to_write);
 
-	ret = do_writepages(mapping, wbc); //yyf: 写数据
+	ret = do_writepages(mapping, wbc);
 
 	/*
 	 * Make sure to wait on the data before writing out the metadata.
@@ -1805,7 +1805,7 @@ static struct wb_writeback_work *get_next_work_item(struct bdi_writeback *wb)
 	struct wb_writeback_work *work = NULL;
 
 	spin_lock_bh(&wb->work_lock);
-	if (!list_empty(&wb->work_list)) { //yyf: 从wb链表中取出work
+	if (!list_empty(&wb->work_list)) {
 		work = list_entry(wb->work_list.next,
 				  struct wb_writeback_work, list);
 		list_del_init(&work->list);
@@ -1886,7 +1886,7 @@ static long wb_do_writeback(struct bdi_writeback *wb)
 	long wrote = 0;
 
 	set_bit(WB_writeback_running, &wb->state);
-	while ((work = get_next_work_item(wb)) != NULL) {//yyf: 从wb中取出回写work，并执行回写操作
+	while ((work = get_next_work_item(wb)) != NULL) {
 		trace_writeback_exec(wb, work);
 		wrote += wb_writeback(wb, work);
 		finish_writeback_work(wb, work);
@@ -2167,7 +2167,7 @@ void __mark_inode_dirty(struct inode *inode, int flags)
 			else
 				dirty_list = &wb->b_dirty_time;
 
-			wakeup_bdi = inode_io_list_move_locked(inode, wb, //yyf: inode挂到dirty_list
+			wakeup_bdi = inode_io_list_move_locked(inode, wb,
 							       dirty_list);
 
 			spin_unlock(&wb->list_lock);

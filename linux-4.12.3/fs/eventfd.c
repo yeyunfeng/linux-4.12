@@ -231,11 +231,11 @@ ssize_t eventfd_ctx_read(struct eventfd_ctx *ctx, int no_wait, __u64 *cnt)
 	res = -EAGAIN;
 	if (ctx->count > 0)
 		res = 0;
-	else if (!no_wait) { //yyf: 可以wait的情况才进去等待
+	else if (!no_wait) {
 		__add_wait_queue(&ctx->wqh, &wait);
 		for (;;) {
 			set_current_state(TASK_INTERRUPTIBLE);
-			if (ctx->count > 0) { //yyf: 读到的count大于0则退出调度
+			if (ctx->count > 0) {
 				res = 0;
 				break;
 			}
@@ -251,7 +251,7 @@ ssize_t eventfd_ctx_read(struct eventfd_ctx *ctx, int no_wait, __u64 *cnt)
 		__set_current_state(TASK_RUNNING);
 	}
 	if (likely(res == 0)) {
-		eventfd_ctx_do_read(ctx, cnt); //yyf: 就把count数取出到cnt
+		eventfd_ctx_do_read(ctx, cnt);
 		if (waitqueue_active(&ctx->wqh))
 			wake_up_locked_poll(&ctx->wqh, POLLOUT);
 	}
@@ -299,7 +299,7 @@ static ssize_t eventfd_write(struct file *file, const char __user *buf, size_t c
 		__add_wait_queue(&ctx->wqh, &wait);
 		for (res = 0;;) {
 			set_current_state(TASK_INTERRUPTIBLE);
-			if (ULLONG_MAX - ctx->count > ucnt) { //yyf: 如果写的count超过了最大值，则睡眠
+			if (ULLONG_MAX - ctx->count > ucnt) {
 				res = sizeof(ucnt);
 				break;
 			}
@@ -315,7 +315,7 @@ static ssize_t eventfd_write(struct file *file, const char __user *buf, size_t c
 		__set_current_state(TASK_RUNNING);
 	}
 	if (likely(res > 0)) {
-		ctx->count += ucnt; //yyf: 把count数加入到ctx->count
+		ctx->count += ucnt;
 		if (waitqueue_active(&ctx->wqh))
 			wake_up_locked_poll(&ctx->wqh, POLLIN);
 	}
@@ -388,7 +388,7 @@ struct eventfd_ctx *eventfd_ctx_fdget(int fd)
 	struct fd f = fdget(fd);
 	if (!f.file)
 		return ERR_PTR(-EBADF);
-	ctx = eventfd_ctx_fileget(f.file);//yyf: 从file->private_data取出ctx
+	ctx = eventfd_ctx_fileget(f.file);
 	fdput(f);
 	return ctx;
 }
@@ -437,7 +437,7 @@ struct file *eventfd_file_create(unsigned int count, int flags)
 
 	if (flags & ~EFD_FLAGS_SET)
 		return ERR_PTR(-EINVAL);
-//yyf: 申请eventfd_ctx结构，一个file文件的private存放该结构
+
 	ctx = kmalloc(sizeof(*ctx), GFP_KERNEL);
 	if (!ctx)
 		return ERR_PTR(-ENOMEM);
@@ -460,17 +460,17 @@ SYSCALL_DEFINE2(eventfd2, unsigned int, count, int, flags)
 	int fd, error;
 	struct file *file;
 
-	error = get_unused_fd_flags(flags & EFD_SHARED_FCNTL_FLAGS);//yyf: 获取个fd描述符
+	error = get_unused_fd_flags(flags & EFD_SHARED_FCNTL_FLAGS);
 	if (error < 0)
 		return error;
 	fd = error;
 
-	file = eventfd_file_create(count, flags);//yyf: 获取个file
+	file = eventfd_file_create(count, flags);
 	if (IS_ERR(file)) {
 		error = PTR_ERR(file);
 		goto err_put_unused_fd;
 	}
-	fd_install(fd, file);//yyf: 关联fd和file
+	fd_install(fd, file);
 
 	return fd;
 

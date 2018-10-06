@@ -974,18 +974,18 @@ int __generic_file_fsync(struct file *file, loff_t start, loff_t end,
 	int err;
 	int ret;
 
-	err = filemap_write_and_wait_range(inode->i_mapping, start, end); //yyf: 将mapping的数据下发IO
+	err = filemap_write_and_wait_range(inode->i_mapping, start, end);
 	if (err)
 		return err;
 
 	inode_lock(inode);
-	ret = sync_mapping_buffers(inode->i_mapping);//yyf: 将mapping里mapping->private_list挂的buffer_head下发IO
+	ret = sync_mapping_buffers(inode->i_mapping);
 	if (!(inode->i_state & I_DIRTY_ALL))
 		goto out;
 	if (datasync && !(inode->i_state & I_DIRTY_DATASYNC))
 		goto out;
 
-	err = sync_inode_metadata(inode, 1); //yyf: 写inode元数据
+	err = sync_inode_metadata(inode, 1);
 	if (ret == 0)
 		ret = err;
 
@@ -1011,10 +1011,10 @@ int generic_file_fsync(struct file *file, loff_t start, loff_t end,
 	struct inode *inode = file->f_mapping->host;
 	int err;
 
-	err = __generic_file_fsync(file, start, end, datasync);//yyf: 写数据和元数据下盘
+	err = __generic_file_fsync(file, start, end, datasync);
 	if (err)
 		return err;
-	return blkdev_issue_flush(inode->i_sb->s_bdev, GFP_KERNEL, NULL);//yyf: FLUSH下盘
+	return blkdev_issue_flush(inode->i_sb->s_bdev, GFP_KERNEL, NULL);
 }
 EXPORT_SYMBOL(generic_file_fsync);
 

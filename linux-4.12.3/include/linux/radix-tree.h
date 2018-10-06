@@ -101,7 +101,7 @@ struct radix_tree_node {
 		struct list_head private_list;	/* For tree user */
 		struct rcu_head	rcu_head;	/* Used when freeing node */
 	};
-	void __rcu	*slots[RADIX_TREE_MAP_SIZE]; //yyf: 64¸ö
+	void __rcu	*slots[RADIX_TREE_MAP_SIZE];
 	unsigned long	tags[RADIX_TREE_MAX_TAGS][RADIX_TREE_TAG_LONGS];
 };
 

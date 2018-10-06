@@ -200,7 +200,7 @@ void pci_dev_assign_slot(struct pci_dev *dev)
 
 	mutex_lock(&pci_slot_mutex);
 	list_for_each_entry(slot, &dev->bus->slots, list)
-		if (PCI_SLOT(dev->devfn) == slot->number)//yyf: 设备号和slot号相等
+		if (PCI_SLOT(dev->devfn) == slot->number)
 			dev->slot = slot;
 	mutex_unlock(&pci_slot_mutex);
 }
@@ -289,7 +289,7 @@ struct pci_slot *pci_create_slot(struct pci_bus *parent, int slot_nr,
 	}
 
 placeholder:
-	slot = kzalloc(sizeof(*slot), GFP_KERNEL);//yyf: 申请个pci_slot结构
+	slot = kzalloc(sizeof(*slot), GFP_KERNEL);
 	if (!slot) {
 		err = -ENOMEM;
 		goto err;
@@ -317,7 +317,7 @@ placeholder:
 	down_read(&pci_bus_sem);
 	list_for_each_entry(dev, &parent->devices, bus_list)
 		if (PCI_SLOT(dev->devfn) == slot_nr)
-			dev->slot = slot;//yyf: pci_slot和pci_dev关联
+			dev->slot = slot;
 	up_read(&pci_bus_sem);
 
 	dev_dbg(&parent->dev, "dev %02x, created physical slot %s\n",

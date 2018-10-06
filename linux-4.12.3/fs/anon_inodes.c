@@ -89,20 +89,20 @@ struct file *anon_inode_getfile(const char *name,
 	this.name = name;
 	this.len = strlen(name);
 	this.hash = 0;
-	path.dentry = d_alloc_pseudo(anon_inode_mnt->mnt_sb, &this);//yyf: 申请个dentry，这边dentry都没有parent，parent就是自己
+	path.dentry = d_alloc_pseudo(anon_inode_mnt->mnt_sb, &this);
 	if (!path.dentry)
 		goto err_module;
 
-	path.mnt = mntget(anon_inode_mnt); //yyf: path的mnt指向全局的anon_inode_mnt
+	path.mnt = mntget(anon_inode_mnt);
 	/*
 	 * We know the anon_inode inode count is always greater than zero,
 	 * so ihold() is safe.
 	 */
-	ihold(anon_inode_inode);//yyf: 直接使用初始化分配好的anon_inode_inode
+	ihold(anon_inode_inode);
 
-	d_instantiate(path.dentry, anon_inode_inode);//yyf: 关联dentry和inode
+	d_instantiate(path.dentry, anon_inode_inode);
 
-	file = alloc_file(&path, OPEN_FMODE(flags), fops); //yyf: 申请个file
+	file = alloc_file(&path, OPEN_FMODE(flags), fops);
 	if (IS_ERR(file))
 		goto err_dput;
 	file->f_mapping = anon_inode_inode->i_mapping;
@@ -142,17 +142,17 @@ int anon_inode_getfd(const char *name, const struct file_operations *fops,
 	int error, fd;
 	struct file *file;
 
-	error = get_unused_fd_flags(flags);//yyf: 申请个fd
+	error = get_unused_fd_flags(flags);
 	if (error < 0)
 		return error;
 	fd = error;
 
-	file = anon_inode_getfile(name, fops, priv, flags);//yyf: 申请个file
+	file = anon_inode_getfile(name, fops, priv, flags);
 	if (IS_ERR(file)) {
 		error = PTR_ERR(file);
 		goto err_put_unused_fd;
 	}
-	fd_install(fd, file);//yyf: fd和file关联
+	fd_install(fd, file);
 
 	return fd;
 
@@ -164,11 +164,11 @@ EXPORT_SYMBOL_GPL(anon_inode_getfd);
 
 static int __init anon_inode_init(void)
 {
-	anon_inode_mnt = kern_mount(&anon_inode_fs_type);//yyf: 挂载anon_inode文件系统
+	anon_inode_mnt = kern_mount(&anon_inode_fs_type);
 	if (IS_ERR(anon_inode_mnt))
 		panic("anon_inode_init() kernel mount failed (%ld)\n", PTR_ERR(anon_inode_mnt));
 
-	anon_inode_inode = alloc_anon_inode(anon_inode_mnt->mnt_sb);//yyf: 分配一个共享的anon_inode
+	anon_inode_inode = alloc_anon_inode(anon_inode_mnt->mnt_sb);
 	if (IS_ERR(anon_inode_inode))
 		panic("anon_inode_init() inode allocation failed (%ld)\n", PTR_ERR(anon_inode_inode));
 

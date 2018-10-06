@@ -96,7 +96,7 @@ static inline struct hlist_head *mp_hash(struct dentry *dentry)
 {
 	unsigned long tmp = ((unsigned long)dentry / L1_CACHE_BYTES);
 	tmp = tmp + (tmp >> mp_hash_shift);
-	return &mountpoint_hashtable[tmp & mp_hash_mask];//yyf: 通过dentry地址hashmountpoint
+	return &mountpoint_hashtable[tmp & mp_hash_mask];
 }
 
 static int mnt_alloc_id(struct mount *mnt)
@@ -106,7 +106,7 @@ static int mnt_alloc_id(struct mount *mnt)
 retry:
 	ida_pre_get(&mnt_id_ida, GFP_KERNEL);
 	spin_lock(&mnt_id_lock);
-	res = ida_get_new_above(&mnt_id_ida, mnt_id_start, &mnt->mnt_id);//yyf: 申请个id给mnt->mnt_id
+	res = ida_get_new_above(&mnt_id_ida, mnt_id_start, &mnt->mnt_id);
 	if (!res)
 		mnt_id_start = mnt->mnt_id + 1;
 	spin_unlock(&mnt_id_lock);
@@ -273,9 +273,9 @@ out_free_cache:
  */
 int __mnt_is_readonly(struct vfsmount *mnt)
 {
-	if (mnt->mnt_flags & MNT_READONLY)//yyf: mnt的标记是否只读
+	if (mnt->mnt_flags & MNT_READONLY)
 		return 1;
-	if (mnt->mnt_sb->s_flags & MS_RDONLY)//yyf: mnt的超级快标记是否只读
+	if (mnt->mnt_sb->s_flags & MS_RDONLY)
 		return 1;
 	return 0;
 }
@@ -630,7 +630,7 @@ struct mount *__lookup_mnt(struct vfsmount *mnt, struct dentry *dentry)
 {
 	struct hlist_head *head = m_hash(mnt, dentry);
 	struct mount *p;
-//yyf: hash表中查找
+
 	hlist_for_each_entry_rcu(p, head, mnt_hash)
 		if (&p->mnt_parent->mnt == mnt && p->mnt_mountpoint == dentry)
 			return p;
@@ -967,26 +967,26 @@ vfs_kern_mount(struct file_system_type *type, int flags, const char *name, void 
 	if (!type)
 		return ERR_PTR(-ENODEV);
 
-	mnt = alloc_vfsmnt(name);//yyf: 申请一个mount
+	mnt = alloc_vfsmnt(name);
 	if (!mnt)
 		return ERR_PTR(-ENOMEM);
 
 	if (flags & MS_KERNMOUNT)
 		mnt->mnt.mnt_flags = MNT_INTERNAL;
 
-	root = mount_fs(type, flags, name, data);//yyf: 回调file_system_type的mount接口，分配dentry和super_block等
+	root = mount_fs(type, flags, name, data);
 	if (IS_ERR(root)) {
 		mnt_free_id(mnt);
 		free_vfsmnt(mnt);
 		return ERR_CAST(root);
 	}
-//yyf: 将mount和root dentry、super_block建立关联
+
 	mnt->mnt.mnt_root = root;
 	mnt->mnt.mnt_sb = root->d_sb;
 	mnt->mnt_mountpoint = mnt->mnt.mnt_root;
 	mnt->mnt_parent = mnt;
 	lock_mount_hash();
-	list_add_tail(&mnt->mnt_instance, &root->d_sb->s_mounts);//yyf: mount挂到super_block的s_mounts链表中
+	list_add_tail(&mnt->mnt_instance, &root->d_sb->s_mounts);
 	unlock_mount_hash();
 	return &mnt->mnt;
 }
@@ -1481,7 +1481,7 @@ static void umount_tree(struct mount *mnt, enum umount_tree_flags how)
 	/* Gather the mounts to umount */
 	for (p = mnt; p; p = next_mnt(p, mnt)) {
 		p->mnt.mnt_flags |= MNT_UMOUNT;
-		list_move(&p->mnt_list, &tmp_list);//yyf: 将mount list挂到tmp_list链表
+		list_move(&p->mnt_list, &tmp_list);
 	}
 
 	/* Hide the mounts from mnt_mounts */

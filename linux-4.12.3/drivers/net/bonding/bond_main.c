@@ -243,7 +243,7 @@ const char *bond_mode_name(int mode)
 void bond_dev_queue_xmit(struct bonding *bond, struct sk_buff *skb,
 			struct net_device *slave_dev)
 {
-	skb->dev = slave_dev;//yyf: skb换成slave网卡设备发送
+	skb->dev = slave_dev;
 
 	BUILD_BUG_ON(sizeof(skb->queue_mapping) !=
 		     sizeof(qdisc_skb_cb(skb)->slave_dev_queue_mapping));

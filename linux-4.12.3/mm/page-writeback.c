@@ -1940,7 +1940,7 @@ bool wb_over_bg_thresh(struct bdi_writeback *wb)
 		      global_node_page_state(NR_UNSTABLE_NFS);
 	domain_dirty_limits(gdtc);
 
-	if (gdtc->dirty > gdtc->bg_thresh) //yyf: dirty的数量超过水线
+	if (gdtc->dirty > gdtc->bg_thresh)
 		return true;
 
 	if (wb_stat(wb, WB_RECLAIMABLE) >

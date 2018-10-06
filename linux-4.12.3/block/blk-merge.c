@@ -722,8 +722,7 @@ static struct request *attempt_merge(struct request_queue *q,
 	 */
 	if (time_after(req->start_time, next->start_time))
 		req->start_time = next->start_time;
-    
-//yyf: 把next的bio链表都挂入到req
+
 	req->biotail->bi_next = next->bio;
 	req->biotail = next->biotail;
 

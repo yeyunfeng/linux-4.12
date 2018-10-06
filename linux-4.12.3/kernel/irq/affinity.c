@@ -35,7 +35,6 @@ static void irq_spread_init_one(struct cpumask *irqmsk, struct cpumask *nmsk,
 	}
 }
 
-//yyf: 根据cpumask看看涉及哪些node，并返回这些node的数量
 static int get_nodes_in_cpumask(const struct cpumask *mask, nodemask_t *nodemsk)
 {
 	int n, nodes = 0;
@@ -67,10 +66,10 @@ irq_create_affinity_masks(int nvecs, const struct irq_affinity *affd)
 	struct cpumask *masks;
 	cpumask_var_t nmsk;
 
-	if (!zalloc_cpumask_var(&nmsk, GFP_KERNEL))//yyf: 申请个cpumask结构
+	if (!zalloc_cpumask_var(&nmsk, GFP_KERNEL))
 		return NULL;
 
-	masks = kcalloc(nvecs, sizeof(*masks), GFP_KERNEL);//yyf: 申请nvecs个cpumask结构
+	masks = kcalloc(nvecs, sizeof(*masks), GFP_KERNEL);
 	if (!masks)
 		goto out;
 
@@ -152,7 +151,7 @@ int irq_calc_affinity_vectors(int maxvec, const struct irq_affinity *affd)
 
 	/* Stabilize the cpumasks */
 	get_online_cpus();
-	cpus = cpumask_weight(cpu_online_mask);//yyf: online的cpu数量
+	cpus = cpumask_weight(cpu_online_mask);
 	put_online_cpus();
 
 	return min(cpus, vecs) + resv;

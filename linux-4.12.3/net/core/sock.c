@@ -1484,7 +1484,7 @@ struct sock *sk_alloc(struct net *net, int family, gfp_t priority,
 		 * See comment in struct sock definition to understand
 		 * why we need sk_prot_creator -acme
 		 */
-		sk->sk_prot = sk->sk_prot_creator = prot;//yyf: 设置proto操作
+		sk->sk_prot = sk->sk_prot_creator = prot;
 		sk->sk_kern_sock = kern;
 		sock_lock_init(sk);
 		sk->sk_net_refcnt = kern ? 0 : 1;
@@ -1572,7 +1572,7 @@ EXPORT_SYMBOL(sk_free);
 
 static void sk_init_common(struct sock *sk)
 {
-	skb_queue_head_init(&sk->sk_receive_queue);//yyf:3个队列的初始化
+	skb_queue_head_init(&sk->sk_receive_queue);
 	skb_queue_head_init(&sk->sk_write_queue);
 	skb_queue_head_init(&sk->sk_error_queue);
 
@@ -2563,7 +2563,7 @@ EXPORT_SYMBOL(sk_stop_timer);
 
 void sock_init_data(struct socket *sock, struct sock *sk)
 {
-	sk_init_common(sk); //yyf: 主要是初始化3个队列
+	sk_init_common(sk);
 	sk->sk_send_head	=	NULL;
 
 	init_timer(&sk->sk_timer);
@@ -2571,15 +2571,15 @@ void sock_init_data(struct socket *sock, struct sock *sk)
 	sk->sk_allocation	=	GFP_KERNEL;
 	sk->sk_rcvbuf		=	sysctl_rmem_default;
 	sk->sk_sndbuf		=	sysctl_wmem_default;
-	sk->sk_state		=	TCP_CLOSE; //yyf: 初始化为 TCP_CLOSE 状态
-	sk_set_socket(sk, sock); //yyf: sk->sk_socket = sock
+	sk->sk_state		=	TCP_CLOSE;
+	sk_set_socket(sk, sock);
 
 	sock_set_flag(sk, SOCK_ZAPPED);
 
 	if (sock) {
 		sk->sk_type	=	sock->type;
 		sk->sk_wq	=	sock->wq;
-		sock->sk	=	sk; //yyf: socket的sk成员指向sock，关联起来
+		sock->sk	=	sk;
 		sk->sk_uid	=	SOCK_INODE(sock)->i_uid;
 	} else {
 		sk->sk_wq	=	NULL;
@@ -2655,7 +2655,7 @@ void release_sock(struct sock *sk)
 {
 	spin_lock_bh(&sk->sk_lock.slock);
 	if (sk->sk_backlog.tail)
-		__release_sock(sk);//yyf: 处理backlog队列
+		__release_sock(sk);
 
 	/* Warning : release_cb() might need to release sk ownership,
 	 * ie call sock_release_ownership(sk) before us.
@@ -3080,7 +3080,7 @@ int proto_register(struct proto *prot, int alloc_slab)
 	}
 
 	mutex_lock(&proto_list_mutex);
-	list_add(&prot->node, &proto_list);//yyf: prot挂到proto_list链表中
+	list_add(&prot->node, &proto_list);
 	assign_proto_idx(prot);
 	mutex_unlock(&proto_list_mutex);
 	return 0;
