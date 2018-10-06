@@ -155,17 +155,18 @@ static struct kern_ipc_perm *ipc_findkey(struct ipc_ids *ids, key_t key)
 	int next_id;
 	int total;
 
+    //yyf: 遍历总共数量的id
 	for (total = 0, next_id = 0; total < ids->in_use; next_id++) {
 		ipc = idr_find(&ids->ipcs_idr, next_id);
 
 		if (ipc == NULL)
 			continue;
 
-		if (ipc->key != key) {
+		if (ipc->key != key) {//yyf: 比较key是否相等
 			total++;
 			continue;
 		}
-
+        //yyf: 找到key对应的ipc，上锁返回
 		rcu_read_lock();
 		ipc_lock_object(ipc);
 		return ipc;
@@ -240,7 +241,8 @@ int ipc_addid(struct ipc_ids *ids, struct kern_ipc_perm *new, int size)
 	current_euid_egid(&euid, &egid);
 	new->cuid = new->uid = euid;
 	new->gid = new->cgid = egid;
-
+    
+    //yyf: 将kern_ipc_perm挂入到idr的radix slot指针里
 	id = idr_alloc(&ids->ipcs_idr, new,
 		       (next_id < 0) ? 0 : ipcid_to_idx(next_id), 0,
 		       GFP_NOWAIT);
@@ -251,7 +253,7 @@ int ipc_addid(struct ipc_ids *ids, struct kern_ipc_perm *new, int size)
 		return id;
 	}
 
-	ids->in_use++;
+	ids->in_use++;//yyf: 数量增加
 
 	if (next_id < 0) {
 		new->seq = ids->seq++;
@@ -262,7 +264,7 @@ int ipc_addid(struct ipc_ids *ids, struct kern_ipc_perm *new, int size)
 		ids->next_id = -1;
 	}
 
-	new->id = ipc_buildid(id, new->seq);
+	new->id = ipc_buildid(id, new->seq);//yyf: seq和id组成
 	return id;
 }
 
@@ -282,7 +284,7 @@ static int ipcget_new(struct ipc_namespace *ns, struct ipc_ids *ids,
 	int err;
 
 	down_write(&ids->rwsem);
-	err = ops->getnew(ns, params);
+	err = ops->getnew(ns, params);//yyf: 执行ops->getnew函数调用
 	up_write(&ids->rwsem);
 	return err;
 }
@@ -346,13 +348,13 @@ static int ipcget_public(struct ipc_namespace *ns, struct ipc_ids *ids,
 	 * a new entry + read locks are not "upgradable"
 	 */
 	down_write(&ids->rwsem);
-	ipcp = ipc_findkey(ids, params->key);
+	ipcp = ipc_findkey(ids, params->key);//yyf: 先查找是否存在key
 	if (ipcp == NULL) {
 		/* key not used */
 		if (!(flg & IPC_CREAT))
 			err = -ENOENT;
 		else
-			err = ops->getnew(ns, params);
+			err = ops->getnew(ns, params);//yyf: 如果没查找到key，同时标记有IPC_CREAT，则执行ops->getnew函数创建
 	} else {
 		/* ipc object has been locked by ipc_findkey() */
 
@@ -361,7 +363,7 @@ static int ipcget_public(struct ipc_namespace *ns, struct ipc_ids *ids,
 		else {
 			err = 0;
 			if (ops->more_checks)
-				err = ops->more_checks(ipcp, params);
+				err = ops->more_checks(ipcp, params);//yyf: 执行 ops->more_checks 函数
 			if (!err)
 				/*
 				 * ipc_check_perms returns the IPC id on
@@ -631,7 +633,7 @@ int ipcget(struct ipc_namespace *ns, struct ipc_ids *ids,
 			const struct ipc_ops *ops, struct ipc_params *params)
 {
 	if (params->key == IPC_PRIVATE)
-		return ipcget_new(ns, ids, ops, params);
+		return ipcget_new(ns, ids, ops, params);//yyf: 如果是IPC_PRIVATE，直接创建
 	else
 		return ipcget_public(ns, ids, ops, params);
 }

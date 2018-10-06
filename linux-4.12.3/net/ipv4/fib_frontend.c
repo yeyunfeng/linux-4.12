@@ -59,7 +59,7 @@ static int __net_init fib4_rules_init(struct net *net)
 	if (!main_table)
 		return -ENOMEM;
 
-	local_table = fib_trie_table(RT_TABLE_LOCAL, main_table);
+	local_table = fib_trie_table(RT_TABLE_LOCAL, main_table);//yyf: LOCAL是以MAIN表为alias，main表有trie，local表无trie
 	if (!local_table)
 		goto fail;
 
@@ -87,7 +87,7 @@ struct fib_table *fib_new_table(struct net *net, u32 id)
 		return tb;
 
 	if (id == RT_TABLE_LOCAL && !net->ipv4.fib_has_custom_rules)
-		alias = fib_new_table(net, RT_TABLE_MAIN);
+		alias = fib_new_table(net, RT_TABLE_MAIN);//yyf: 只有LOCAL时才有可能为alias
 
 	tb = fib_trie_table(id, alias);
 	if (!tb)
@@ -122,7 +122,7 @@ struct fib_table *fib_get_table(struct net *net, u32 id)
 	h = id & (FIB_TABLE_HASHSZ - 1);
 
 	head = &net->ipv4.fib_table_hash[h];
-	hlist_for_each_entry_rcu(tb, head, tb_hlist) {
+	hlist_for_each_entry_rcu(tb, head, tb_hlist) {//yyf: 遍历hash表，查找id相等的fib_table
 		if (tb->tb_id == id)
 			return tb;
 	}
@@ -213,16 +213,16 @@ static inline unsigned int __inet_dev_addr_type(struct net *net,
 	unsigned int ret = RTN_BROADCAST;
 	struct fib_table *table;
 
-	if (ipv4_is_zeronet(addr) || ipv4_is_lbcast(addr))
+	if (ipv4_is_zeronet(addr) || ipv4_is_lbcast(addr))//yyf: 全0或者全ff，广播
 		return RTN_BROADCAST;
-	if (ipv4_is_multicast(addr))
+	if (ipv4_is_multicast(addr))//yyf: e开头的是多播，前3bit是1
 		return RTN_MULTICAST;
 
 	rcu_read_lock();
 
 	table = fib_get_table(net, tb_id);
 	if (table) {
-		ret = RTN_UNICAST;
+		ret = RTN_UNICAST;//yyf: 对应单播地址，需要在fib_table中查找确认
 		if (!fib_table_lookup(table, &fl4, &res, FIB_LOOKUP_NOREF)) {
 			if (!dev || dev == res.fi->fib_dev)
 				ret = res.type;

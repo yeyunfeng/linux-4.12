@@ -1051,7 +1051,7 @@ static struct kioctx *lookup_ioctx(unsigned long ctx_id)
 		return NULL;
 
 	rcu_read_lock();
-	table = rcu_dereference(mm->ioctx_table);
+	table = rcu_dereference(mm->ioctx_table);//yyf: 通过进程mm结构成员ioctx_table查找
 
 	if (!table || id >= table->nr)
 		goto out;

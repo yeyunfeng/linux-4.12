@@ -2068,21 +2068,21 @@ struct fib_table *fib_trie_table(u32 id, struct fib_table *alias)
 	size_t sz = sizeof(*tb);
 
 	if (!alias)
-		sz += sizeof(struct trie);
+		sz += sizeof(struct trie);//yyf: alias不需要trie结构
 
 	tb = kzalloc(sz, GFP_KERNEL);
 	if (!tb)
 		return NULL;
 
-	tb->tb_id = id;
+	tb->tb_id = id;//yyf: 赋值id
 	tb->tb_num_default = 0;
-	tb->tb_data = (alias ? alias->__data : tb->__data);
+	tb->tb_data = (alias ? alias->__data : tb->__data);//yyf: alias的话，指向alias的data
 
 	if (alias)
 		return tb;
 
 	t = (struct trie *) tb->tb_data;
-	t->kv[0].pos = KEYLENGTH;
+	t->kv[0].pos = KEYLENGTH; //yyf: 32
 	t->kv[0].slen = KEYLENGTH;
 #ifdef CONFIG_IP_FIB_TRIE_STATS
 	t->stats = alloc_percpu(struct trie_use_stats);

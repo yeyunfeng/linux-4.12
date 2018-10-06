@@ -331,7 +331,7 @@ void pci_bus_add_device(struct pci_dev *dev)
 		return;
 	}
 
-	dev->is_added = 1;
+	dev->is_added = 1;//yyf: 设置is_added标记
 }
 EXPORT_SYMBOL_GPL(pci_bus_add_device);
 
@@ -359,7 +359,7 @@ void pci_bus_add_devices(const struct pci_bus *bus)
 			continue;
 		child = dev->subordinate;
 		if (child)
-			pci_bus_add_devices(child);
+			pci_bus_add_devices(child);//yyf: 递归子总线
 	}
 }
 EXPORT_SYMBOL(pci_bus_add_devices);

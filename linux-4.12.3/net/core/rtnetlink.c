@@ -75,7 +75,7 @@ static struct sk_buff *defer_kfree_skb_list;
 void rtnl_kfree_skbs(struct sk_buff *head, struct sk_buff *tail)
 {
 	if (head && tail) {
-		tail->next = defer_kfree_skb_list;
+		tail->next = defer_kfree_skb_list;//yyf: 先把skb挂到队列，等unlock的时候释放
 		defer_kfree_skb_list = head;
 	}
 }
@@ -90,7 +90,7 @@ void __rtnl_unlock(void)
 	mutex_unlock(&rtnl_mutex);
 
 	while (head) {
-		struct sk_buff *next = head->next;
+		struct sk_buff *next = head->next;//yyf: 释放skb
 
 		kfree_skb(head);
 		cond_resched();
@@ -303,7 +303,7 @@ static const struct rtnl_link_ops *rtnl_link_ops_get(const char *kind)
 {
 	const struct rtnl_link_ops *ops;
 
-	list_for_each_entry(ops, &link_ops, list) {
+	list_for_each_entry(ops, &link_ops, list) {//yyf: 遍历link_ops链表
 		if (!strcmp(ops->kind, kind))
 			return ops;
 	}
@@ -361,7 +361,7 @@ static void __rtnl_kill_links(struct net *net, struct rtnl_link_ops *ops)
 	LIST_HEAD(list_kill);
 
 	for_each_netdev(net, dev) {
-		if (dev->rtnl_link_ops == ops)
+		if (dev->rtnl_link_ops == ops) //yyf: 遍历所有的网卡设备，对ops相等的做dellink
 			ops->dellink(dev, &list_kill);
 	}
 	unregister_netdevice_many(&list_kill);
@@ -2652,7 +2652,7 @@ replay:
 		dev->ifindex = ifm->ifi_index;
 
 		if (ops->newlink) {
-			err = ops->newlink(link_net ? : net, dev, tb, data);
+			err = ops->newlink(link_net ? : net, dev, tb, data); //yyf: 执行ops的newlink
 			/* Drivers should call free_netdev() in ->destructor
 			 * and unregister it on failure after registration
 			 * so that device could be finally freed in rtnl_unlock.

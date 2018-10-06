@@ -111,7 +111,7 @@ static netdev_tx_t veth_xmit(struct sk_buff *skb, struct net_device *dev)
 		goto drop;
 	}
 
-	if (likely(dev_forward_skb(rcv, skb) == NET_RX_SUCCESS)) {
+	if (likely(dev_forward_skb(rcv, skb) == NET_RX_SUCCESS)) {//yyf: 将skb转发给peer网卡
 		struct pcpu_vstats *stats = this_cpu_ptr(dev->vstats);
 
 		u64_stats_update_begin(&stats->syncp);

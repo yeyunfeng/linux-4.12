@@ -401,7 +401,7 @@ static void d_lru_isolate(struct list_lru_one *lru, struct dentry *dentry)
 	D_FLAG_VERIFY(dentry, DCACHE_LRU_LIST);
 	dentry->d_flags &= ~DCACHE_LRU_LIST;
 	this_cpu_dec(nr_dentry_unused);
-	list_lru_isolate(lru, &dentry->d_lru);
+	list_lru_isolate(lru, &dentry->d_lru);//yyf: dentry从lru链表中删除
 }
 
 static void d_lru_shrink_move(struct list_lru_one *lru, struct dentry *dentry,
@@ -409,7 +409,7 @@ static void d_lru_shrink_move(struct list_lru_one *lru, struct dentry *dentry,
 {
 	D_FLAG_VERIFY(dentry, DCACHE_LRU_LIST);
 	dentry->d_flags |= DCACHE_SHRINK_LIST;
-	list_lru_isolate_move(lru, &dentry->d_lru, list);
+	list_lru_isolate_move(lru, &dentry->d_lru, list);//yyf: dentry 挂到list链表
 }
 
 /*
@@ -951,7 +951,7 @@ static void shrink_dentry_list(struct list_head *list)
 		 * to the LRU here, so we can simply remove it from the list
 		 * here regardless of whether it is referenced or not.
 		 */
-		d_shrink_del(dentry);
+		d_shrink_del(dentry);//yyf: dentry d_lru所在链表list中删除
 
 		/*
 		 * We found an inuse dentry which was not removed from
@@ -1092,7 +1092,7 @@ long prune_dcache_sb(struct super_block *sb, struct shrink_control *sc)
 	long freed;
 
 	freed = list_lru_shrink_walk(&sb->s_dentry_lru, sc,
-				     dentry_lru_isolate, &dispose);
+				     dentry_lru_isolate, &dispose);//yyf: 遍历sb的s_dentry_lru链表，从链表中摘除dentry并挂入到dispose链表
 	shrink_dentry_list(&dispose);
 	return freed;
 }
@@ -1567,7 +1567,7 @@ struct dentry *__d_alloc(struct super_block *sb, const struct qstr *name)
 	char *dname;
 	int err;
 
-	dentry = kmem_cache_alloc(dentry_cache, GFP_KERNEL);
+	dentry = kmem_cache_alloc(dentry_cache, GFP_KERNEL); //yyf: 申请个dentry结构
 	if (!dentry)
 		return NULL;
 
@@ -1579,12 +1579,12 @@ struct dentry *__d_alloc(struct super_block *sb, const struct qstr *name)
 	 */
 	dentry->d_iname[DNAME_INLINE_LEN-1] = 0;
 	if (unlikely(!name)) {
-		static const struct qstr anon = QSTR_INIT("/", 1);
+		static const struct qstr anon = QSTR_INIT("/", 1); //yyf: 名字为空，用 "/" 目录名
 		name = &anon;
 		dname = dentry->d_iname;
 	} else if (name->len > DNAME_INLINE_LEN-1) {
 		size_t size = offsetof(struct external_name, name[1]);
-		struct external_name *p = kmalloc(size + name->len,
+		struct external_name *p = kmalloc(size + name->len, //yyf: 如果名字太长，则申请 external_name
 						  GFP_KERNEL_ACCOUNT);
 		if (!p) {
 			kmem_cache_free(dentry_cache, dentry); 
@@ -1596,9 +1596,9 @@ struct dentry *__d_alloc(struct super_block *sb, const struct qstr *name)
 			kasan_unpoison_shadow(dname,
 				round_up(name->len + 1,	sizeof(unsigned long)));
 	} else  {
-		dname = dentry->d_iname;
+		dname = dentry->d_iname; //yyf: 名字不长，则直接用dentry的d_iname
 	}	
-
+//yyf: dentry name初始化
 	dentry->d_name.len = name->len;
 	dentry->d_name.hash = name->hash;
 	memcpy(dname, name->name, name->len);
@@ -1613,8 +1613,8 @@ struct dentry *__d_alloc(struct super_block *sb, const struct qstr *name)
 	spin_lock_init(&dentry->d_lock);
 	seqcount_init(&dentry->d_seq);
 	dentry->d_inode = NULL;
-	dentry->d_parent = dentry;
-	dentry->d_sb = sb;
+	dentry->d_parent = dentry; //yyf: 初始化默认dentry parent指向自己
+	dentry->d_sb = sb; //yyf: dentry的超级块指针初始化
 	dentry->d_op = NULL;
 	dentry->d_fsdata = NULL;
 	INIT_HLIST_BL_NODE(&dentry->d_hash);
@@ -1622,7 +1622,7 @@ struct dentry *__d_alloc(struct super_block *sb, const struct qstr *name)
 	INIT_LIST_HEAD(&dentry->d_subdirs);
 	INIT_HLIST_NODE(&dentry->d_u.d_alias);
 	INIT_LIST_HEAD(&dentry->d_child);
-	d_set_d_op(dentry, dentry->d_sb->s_d_op);
+	d_set_d_op(dentry, dentry->d_sb->s_d_op);//yyf: dentry的 d_op设置为超级块的d_op
 
 	if (dentry->d_op && dentry->d_op->d_init) {
 		err = dentry->d_op->d_init(dentry);
@@ -1634,7 +1634,7 @@ struct dentry *__d_alloc(struct super_block *sb, const struct qstr *name)
 		}
 	}
 
-	this_cpu_inc(nr_dentry);
+	this_cpu_inc(nr_dentry);//yyf: 每次分配一个dentry，都会增加nr_dentry的计数
 
 	return dentry;
 }
@@ -1660,8 +1660,8 @@ struct dentry *d_alloc(struct dentry * parent, const struct qstr *name)
 	 * to concurrency here
 	 */
 	__dget_dlock(parent);
-	dentry->d_parent = parent;
-	list_add(&dentry->d_child, &parent->d_subdirs);
+	dentry->d_parent = parent; //yyf: 设置dentry的parent
+	list_add(&dentry->d_child, &parent->d_subdirs); //yyf: 并把 dentry->d_child 加入到parent的subdirs链表
 	spin_unlock(&parent->d_lock);
 
 	return dentry;
@@ -2534,12 +2534,14 @@ static inline void __d_add(struct dentry *dentry, struct inode *inode)
 	}
 	if (inode) {
 		unsigned add_flags = d_flags_for_inode(inode);
+        //yyf: dentry加入到inode->i_dentry链表
 		hlist_add_head(&dentry->d_u.d_alias, &inode->i_dentry);
 		raw_write_seqcount_begin(&dentry->d_seq);
 		__d_set_inode_and_type(dentry, inode, add_flags);
 		raw_write_seqcount_end(&dentry->d_seq);
 		fsnotify_update_flags(dentry);
 	}
+    //yyf: dentry加入到hash链表
 	__d_rehash(dentry);
 	if (dir)
 		end_dir_add(dir, n);

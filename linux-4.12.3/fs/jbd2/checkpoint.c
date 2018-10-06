@@ -186,7 +186,7 @@ __flush_batch(journal_t *journal, int *batch_count)
 
 	blk_start_plug(&plug);
 	for (i = 0; i < *batch_count; i++)
-		write_dirty_buffer(journal->j_chkpt_bhs[i], REQ_SYNC);
+		write_dirty_buffer(journal->j_chkpt_bhs[i], REQ_SYNC);//yyf: journal->j_chkpt_bhs[i] п╢ел
 	blk_finish_plug(&plug);
 
 	for (i = 0; i < *batch_count; i++) {

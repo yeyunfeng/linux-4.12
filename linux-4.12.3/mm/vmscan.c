@@ -285,7 +285,7 @@ int register_shrinker(struct shrinker *shrinker)
 		return -ENOMEM;
 
 	down_write(&shrinker_rwsem);
-	list_add_tail(&shrinker->list, &shrinker_list);
+	list_add_tail(&shrinker->list, &shrinker_list); //yyf: 将shrinker加入到全局 shrinker_list 链表
 	up_write(&shrinker_rwsem);
 	return 0;
 }

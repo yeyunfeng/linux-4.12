@@ -574,7 +574,7 @@ static int vlan_dev_init(struct net_device *dev)
 	dev->dev_id = real_dev->dev_id;
 
 	if (is_zero_ether_addr(dev->dev_addr)) {
-		ether_addr_copy(dev->dev_addr, real_dev->dev_addr);
+		ether_addr_copy(dev->dev_addr, real_dev->dev_addr);//yyf: 从real_dev拷贝mac地址
 		dev->addr_assign_type = NET_ADDR_STOLEN;
 	}
 	if (is_zero_ether_addr(dev->broadcast))
@@ -759,7 +759,7 @@ static int vlan_dev_get_iflink(const struct net_device *dev)
 {
 	struct net_device *real_dev = vlan_dev_priv(dev)->real_dev;
 
-	return real_dev->ifindex;
+	return real_dev->ifindex;//yyf: 返回物理口的接口索引
 }
 
 static const struct ethtool_ops vlan_ethtool_ops = {

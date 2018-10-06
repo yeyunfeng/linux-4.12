@@ -1465,7 +1465,7 @@ static void check_preempt_equal_prio(struct rq *rq, struct task_struct *p)
  */
 static void check_preempt_curr_rt(struct rq *rq, struct task_struct *p, int flags)
 {
-	if (p->prio < rq->curr->prio) {
+	if (p->prio < rq->curr->prio) {//yyf: 如果进程p的优先级prio小于当前进程
 		resched_curr(rq);
 		return;
 	}
@@ -1496,10 +1496,10 @@ static struct sched_rt_entity *pick_next_rt_entity(struct rq *rq,
 	struct list_head *queue;
 	int idx;
 
-	idx = sched_find_first_bit(array->bitmap);
+	idx = sched_find_first_bit(array->bitmap);//yyf: 通过查找位图取索引
 	BUG_ON(idx >= MAX_RT_PRIO);
 
-	queue = array->queue + idx;
+	queue = array->queue + idx;//yyf: 找到对应队列
 	next = list_entry(queue->next, struct sched_rt_entity, run_list);
 
 	return next;
@@ -2254,7 +2254,7 @@ void __init init_sched_rt_class(void)
 {
 	unsigned int i;
 
-	for_each_possible_cpu(i) {
+	for_each_possible_cpu(i) {//yyf: 对每个cpu申请cpumask结构给 local_cpu_mask
 		zalloc_cpumask_var_node(&per_cpu(local_cpu_mask, i),
 					GFP_KERNEL, cpu_to_node(i));
 	}
@@ -2364,13 +2364,13 @@ static void task_tick_rt(struct rq *rq, struct task_struct *p, int queued)
 	 * RR tasks need a special form of timeslice management.
 	 * FIFO tasks have no timeslices.
 	 */
-	if (p->policy != SCHED_RR)
+	if (p->policy != SCHED_RR)//yyf: SCHED_RR才需要tick中断处理时间片
 		return;
 
-	if (--p->rt.time_slice)
+	if (--p->rt.time_slice)//yyf: 时间片减到为 0 才处理下面
 		return;
 
-	p->rt.time_slice = sched_rr_timeslice;
+	p->rt.time_slice = sched_rr_timeslice;//yyf: 重新设置时间片
 
 	/*
 	 * Requeue to the end of queue if we (and all of our ancestors) are not
