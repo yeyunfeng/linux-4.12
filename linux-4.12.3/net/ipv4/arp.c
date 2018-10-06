@@ -532,7 +532,7 @@ struct sk_buff *arp_create(int type, int ptype, __be32 dest_ip,
 	/*
 	 *	Allocate a buffer
 	 */
-
+//yyf: 创建个skb，并填充arp头
 	skb = alloc_skb(arp_hdr_len(dev) + hlen + tlen, GFP_ATOMIC);
 	if (!skb)
 		return NULL;
@@ -690,13 +690,13 @@ static int arp_process(struct net *net, struct sock *sk, struct sk_buff *skb)
 	/* arp_rcv below verifies the ARP header and verifies the device
 	 * is ARP'able.
 	 */
-
+//yyf: 如果网卡设备没有in_dev，即没有ip，则直接走释放skb
 	if (!in_dev)
 		goto out_free_skb;
 
 	arp = arp_hdr(skb);
 
-	switch (dev_type) {
+	switch (dev_type) {//yyf: 看看网卡设备类型
 	default:
 		if (arp->ar_pro != htons(ETH_P_IP) ||
 		    htons(dev_type) != arp->ar_hrd)
@@ -736,14 +736,15 @@ static int arp_process(struct net *net, struct sock *sk, struct sk_buff *skb)
 	if (arp->ar_op != htons(ARPOP_REPLY) &&
 	    arp->ar_op != htons(ARPOP_REQUEST))
 		goto out_free_skb;
-
+    
+//yyf: arp协议报文 arp_hdr |---sha---|--sip--|---tha---|--tip--|
 /*
  *	Extract fields
  */
 	arp_ptr = (unsigned char *)(arp + 1);
-	sha	= arp_ptr;
+	sha	= arp_ptr;//yyf: source hardware addr 源硬件mac地址
 	arp_ptr += dev->addr_len;
-	memcpy(&sip, arp_ptr, 4);
+	memcpy(&sip, arp_ptr, 4);//yyf: source ip 源ip
 	arp_ptr += 4;
 	switch (dev_type) {
 #if IS_ENABLED(CONFIG_FIREWIRE_NET)
@@ -751,10 +752,10 @@ static int arp_process(struct net *net, struct sock *sk, struct sk_buff *skb)
 		break;
 #endif
 	default:
-		tha = arp_ptr;
+		tha = arp_ptr; //yyf: target hardware addr 目的硬件mac地址
 		arp_ptr += dev->addr_len;
 	}
-	memcpy(&tip, arp_ptr, 4);
+	memcpy(&tip, arp_ptr, 4);//yyf: target ip 目的ip
 /*
  *	Check for bad requests for 127.x.x.x and requests for multicast
  *	addresses.  If this is one such, delete it.
@@ -936,7 +937,8 @@ static int arp_rcv(struct sk_buff *skb, struct net_device *dev,
 		   struct packet_type *pt, struct net_device *orig_dev)
 {
 	const struct arphdr *arp;
-
+    
+//yyf: 网卡标记没有ARP，或者skb类型是回环口、其他主机的，不处理
 	/* do not tweak dropwatch on an ARP we will ignore */
 	if (dev->flags & IFF_NOARP ||
 	    skb->pkt_type == PACKET_OTHERHOST ||
@@ -950,13 +952,15 @@ static int arp_rcv(struct sk_buff *skb, struct net_device *dev,
 	/* ARP header, plus 2 device addresses, plus 2 IP addresses.  */
 	if (!pskb_may_pull(skb, arp_hdr_len(dev)))
 		goto freeskb;
-
+    
+//yyf: 从skb找到arp头位置，对长度校验
 	arp = arp_hdr(skb);
 	if (arp->ar_hln != dev->addr_len || arp->ar_pln != 4)
 		goto freeskb;
-
+//yyf: 将skb的cb作为neighbour_cb用
 	memset(NEIGH_CB(skb), 0, sizeof(struct neighbour_cb));
 
+//yyf: hook点处理，并走到arp_process函数
 	return NF_HOOK(NFPROTO_ARP, NF_ARP_IN,
 		       dev_net(dev), NULL, skb, dev, NULL,
 		       arp_process);

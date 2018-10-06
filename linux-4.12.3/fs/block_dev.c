@@ -201,7 +201,7 @@ __blkdev_direct_IO_simple(struct kiocb *iocb, struct iov_iter *iter,
 		int nr_pages)
 {
 	struct file *file = iocb->ki_filp;
-	struct block_device *bdev = I_BDEV(bdev_file_inode(file));
+	struct block_device *bdev = I_BDEV(bdev_file_inode(file)); //yyf: 通过iocb找到file，再找到inode，最后bdev
 	struct bio_vec inline_vecs[DIO_INLINE_BIO_VECS], *vecs, *bvec;
 	loff_t pos = iocb->ki_pos;
 	bool should_dirty = false;
@@ -213,7 +213,7 @@ __blkdev_direct_IO_simple(struct kiocb *iocb, struct iov_iter *iter,
 	if ((pos | iov_iter_alignment(iter)) &
 	    (bdev_logical_block_size(bdev) - 1))
 		return -EINVAL;
-
+//yyf: 申请nr_pages个bio_vec
 	if (nr_pages <= DIO_INLINE_BIO_VECS)
 		vecs = inline_vecs;
 	else {
@@ -221,7 +221,7 @@ __blkdev_direct_IO_simple(struct kiocb *iocb, struct iov_iter *iter,
 		if (!vecs)
 			return -ENOMEM;
 	}
-
+//yyf: bio的初始化
 	bio_init(&bio, vecs, nr_pages);
 	bio.bi_bdev = bdev;
 	bio.bi_iter.bi_sector = pos >> 9;
@@ -451,7 +451,7 @@ int __sync_blockdev(struct block_device *bdev, int wait)
 	if (!bdev)
 		return 0;
 	if (!wait)
-		return filemap_flush(bdev->bd_inode->i_mapping);
+		return filemap_flush(bdev->bd_inode->i_mapping);//yyf: 如果wait为0，则走该分支后返回
 	return filemap_write_and_wait(bdev->bd_inode->i_mapping);
 }
 
@@ -2064,7 +2064,7 @@ struct block_device *lookup_bdev(const char *pathname)
 
 	if (!pathname || !*pathname)
 		return ERR_PTR(-EINVAL);
-
+//yyf: 从文件名找到到path路径, 然后得到dentry，找到对应inode，如果是块设备，则inode找到bdev
 	error = kern_path(pathname, LOOKUP_FOLLOW, &path);
 	if (error)
 		return ERR_PTR(error);

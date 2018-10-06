@@ -57,7 +57,7 @@ int sync_filesystem(struct super_block *sb)
 	/*
 	 * No point in syncing out anything if the filesystem is read-only.
 	 */
-	if (sb->s_flags & MS_RDONLY)
+	if (sb->s_flags & MS_RDONLY)//yyf: 只读文件系统则不需要sync
 		return 0;
 
 	ret = __sync_filesystem(sb, 0);

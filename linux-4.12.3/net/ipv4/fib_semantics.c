@@ -307,7 +307,7 @@ static struct fib_info *fib_find_info(const struct fib_info *nfi)
 	struct fib_info *fi;
 	unsigned int hash;
 
-	hash = fib_info_hashfn(nfi);
+	hash = fib_info_hashfn(nfi);//yyf: 计算出hash值
 	head = &fib_info_hash[hash];
 
 	hlist_for_each_entry(fi, head, fib_hash) {
@@ -1001,7 +1001,7 @@ struct fib_info *fib_create_info(struct fib_config *cfg)
 		goto err_inval;
 
 #ifdef CONFIG_IP_ROUTE_MULTIPATH
-	if (cfg->fc_mp) {
+	if (cfg->fc_mp) {//yyf: 多路径的时候才可能有多个下一跳
 		nhs = fib_count_nexthops(cfg->fc_mp, cfg->fc_mp_len);
 		if (nhs == 0)
 			goto err_inval;
@@ -1029,7 +1029,7 @@ struct fib_info *fib_create_info(struct fib_config *cfg)
 		if (!fib_info_hash_size)
 			goto failure;
 	}
-
+//yyf: 申请fib_info结构，加上nhs个fib_nh结构
 	fi = kzalloc(sizeof(*fi)+nhs*sizeof(struct fib_nh), GFP_KERNEL);
 	if (!fi)
 		goto failure;
@@ -1176,12 +1176,12 @@ link_it:
 	atomic_inc(&fi->fib_clntref);
 	spin_lock_bh(&fib_info_lock);
 	hlist_add_head(&fi->fib_hash,
-		       &fib_info_hash[fib_info_hashfn(fi)]);
+		       &fib_info_hash[fib_info_hashfn(fi)]);//yyf: 将fib_info加入到hash链表
 	if (fi->fib_prefsrc) {
 		struct hlist_head *head;
 
 		head = &fib_info_laddrhash[fib_laddr_hashfn(fi->fib_prefsrc)];
-		hlist_add_head(&fi->fib_lhash, head);
+		hlist_add_head(&fi->fib_lhash, head);//yyf: 将fib_info加入到fib_info_laddrhash hash链表
 	}
 	change_nexthops(fi) {
 		struct hlist_head *head;

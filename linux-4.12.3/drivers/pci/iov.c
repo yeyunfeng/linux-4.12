@@ -128,7 +128,7 @@ int pci_iov_add_virtfn(struct pci_dev *dev, int id, int reset)
 	if (!bus)
 		goto failed;
 
-	virtfn = pci_alloc_dev(bus);
+	virtfn = pci_alloc_dev(bus);//yyf: 申请一个pci_dev给一个vf
 	if (!virtfn)
 		goto failed0;
 
@@ -727,10 +727,10 @@ int pci_vfs_assigned(struct pci_dev *dev)
 	 * determine the device ID for the VFs, the vendor ID will be the
 	 * same as the PF so there is no need to check for that one
 	 */
-	pci_read_config_word(dev, dev->sriov->pos + PCI_SRIOV_VF_DID, &dev_id);
+	pci_read_config_word(dev, dev->sriov->pos + PCI_SRIOV_VF_DID, &dev_id);//yyf: 获取vf的设备id
 
 	/* loop through all the VFs to see if we own any that are assigned */
-	vfdev = pci_get_device(dev->vendor, dev_id, NULL);
+	vfdev = pci_get_device(dev->vendor, dev_id, NULL);//yyf: 通过厂商设备
 	while (vfdev) {
 		/*
 		 * It is considered assigned if it is a virtual function with

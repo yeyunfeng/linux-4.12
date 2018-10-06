@@ -134,7 +134,7 @@ void inet_sock_destruct(struct sock *sk)
 {
 	struct inet_sock *inet = inet_sk(sk);
 
-	__skb_queue_purge(&sk->sk_receive_queue);
+	__skb_queue_purge(&sk->sk_receive_queue);//yyf: 释放队列中的skb
 	__skb_queue_purge(&sk->sk_error_queue);
 
 	sk_mem_reclaim(sk);
@@ -144,7 +144,7 @@ void inet_sock_destruct(struct sock *sk)
 		       sk->sk_state, sk);
 		return;
 	}
-	if (!sock_flag(sk, SOCK_DEAD)) {
+	if (!sock_flag(sk, SOCK_DEAD)) { //yyf: 只允许SOCK_DEAD的sock
 		pr_err("Attempt to release alive inet socket %p\n", sk);
 		return;
 	}
@@ -177,12 +177,12 @@ static int inet_autobind(struct sock *sk)
 	/* We may need to bind the socket. */
 	lock_sock(sk);
 	inet = inet_sk(sk);
-	if (!inet->inet_num) {
+	if (!inet->inet_num) {//yyf: inet_num源端口号
 		if (sk->sk_prot->get_port(sk, 0)) {
 			release_sock(sk);
 			return -EAGAIN;
 		}
-		inet->inet_sport = htons(inet->inet_num);
+		inet->inet_sport = htons(inet->inet_num);//yyf: 赋值源端口号
 	}
 	release_sock(sk);
 	return 0;
@@ -200,17 +200,19 @@ int inet_listen(struct socket *sock, int backlog)
 	lock_sock(sk);
 
 	err = -EINVAL;
+    //yyf: 如果socket状态不是SS_UNCONNECTED，或者类型不是SOCK_STREAM，则返回错误,也就是只允许stream类型SS_UNCONNECTED状态
 	if (sock->state != SS_UNCONNECTED || sock->type != SOCK_STREAM)
 		goto out;
 
 	old_state = sk->sk_state;
-	if (!((1 << old_state) & (TCPF_CLOSE | TCPF_LISTEN)))
+	if (!((1 << old_state) & (TCPF_CLOSE | TCPF_LISTEN)))//yyf: 只允许sock CLOSE和LISTEN状态
 		goto out;
 
 	/* Really, if the socket is already in listen state
 	 * we can only allow the backlog to be adjusted.
 	 */
-	if (old_state != TCP_LISTEN) {
+	if (old_state != TCP_LISTEN) { //yyf: listen状态只允许调整backlog，这个分支是处理CLOSE状态的sock
+	
 		/* Enable TFO w/o requiring TCP_FASTOPEN socket option.
 		 * Note that only TCP sockets (SOCK_STREAM) will reach here.
 		 * Also fastopen backlog may already been set via the option
@@ -228,7 +230,7 @@ int inet_listen(struct socket *sock, int backlog)
 		if (err)
 			goto out;
 	}
-	sk->sk_max_ack_backlog = backlog;
+	sk->sk_max_ack_backlog = backlog;//yyf: 赋值sk_max_ack_backlog
 	err = 0;
 
 out:
@@ -255,7 +257,7 @@ static int inet_create(struct net *net, struct socket *sock, int protocol,
 	if (protocol < 0 || protocol >= IPPROTO_MAX)
 		return -EINVAL;
 
-	sock->state = SS_UNCONNECTED;
+	sock->state = SS_UNCONNECTED;//yyf: sock状态初始化为SS_UNCONNECTED状态
 
 	/* Look for the requested type/protocol pair. */
 lookup_protocol:
@@ -265,22 +267,22 @@ lookup_protocol:
 
 		err = 0;
 		/* Check the non-wild match. */
-		if (protocol == answer->protocol) {
+		if (protocol == answer->protocol) { //yyf: 如果入参protocol与answer->protocol相等，则protocol不能是IPPROTO_IP才退出
 			if (protocol != IPPROTO_IP)
 				break;
 		} else {
 			/* Check for the two wild cases. */
-			if (IPPROTO_IP == protocol) {
+			if (IPPROTO_IP == protocol) {//yyf: 如果入参是IPPROTO_IP，则选择answer->protocol，大部分走该路径
 				protocol = answer->protocol;
 				break;
 			}
-			if (IPPROTO_IP == answer->protocol)
+			if (IPPROTO_IP == answer->protocol)//yyf: 如果入参不是IPPROTO_IP，但是answer->protocol是IPPROTO_IP，也退出，以protocol为准
 				break;
 		}
 		err = -EPROTONOSUPPORT;
 	}
 
-	if (unlikely(err)) {
+	if (unlikely(err)) {//yyf: protocol不支持走这个路径
 		if (try_loading_module < 2) {
 			rcu_read_unlock();
 			/*
@@ -304,18 +306,18 @@ lookup_protocol:
 
 	err = -EPERM;
 	if (sock->type == SOCK_RAW && !kern &&
-	    !ns_capable(net->user_ns, CAP_NET_RAW))
+	    !ns_capable(net->user_ns, CAP_NET_RAW))//yyf: 检测RAW是否有权限
 		goto out_rcu_unlock;
 
-	sock->ops = answer->ops;
+	sock->ops = answer->ops;//yyf: socket的ops赋值为 answer->ops
 	answer_prot = answer->prot;
 	answer_flags = answer->flags;
 	rcu_read_unlock();
 
 	WARN_ON(!answer_prot->slab);
-
+//yyf: 申请sock结构
 	err = -ENOBUFS;
-	sk = sk_alloc(net, PF_INET, GFP_KERNEL, answer_prot, kern);
+	sk = sk_alloc(net, PF_INET, GFP_KERNEL, answer_prot, kern);//yyf: proto方法传入，申请sock结构
 	if (!sk)
 		goto out;
 
@@ -328,7 +330,7 @@ lookup_protocol:
 
 	inet->nodefrag = 0;
 
-	if (SOCK_RAW == sock->type) {
+	if (SOCK_RAW == sock->type) {//yyf: 如果RAW类型，则端口号设置为protocol
 		inet->inet_num = protocol;
 		if (IPPROTO_RAW == protocol)
 			inet->hdrincl = 1;
@@ -341,7 +343,7 @@ lookup_protocol:
 
 	inet->inet_id = 0;
 
-	sock_init_data(sock, sk);
+	sock_init_data(sock, sk);//yyf: 初始化和关联sock和socket
 
 	sk->sk_destruct	   = inet_sock_destruct;
 	sk->sk_protocol	   = protocol;
@@ -373,7 +375,7 @@ lookup_protocol:
 	}
 
 	if (sk->sk_prot->init) {
-		err = sk->sk_prot->init(sk);
+		err = sk->sk_prot->init(sk);//yyf: 执行proto的init函数
 		if (err) {
 			sk_common_release(sk);
 			goto out;
@@ -422,7 +424,7 @@ int inet_release(struct socket *sock)
 		    !(current->flags & PF_EXITING))
 			timeout = sk->sk_lingertime;
 		sock->sk = NULL;
-		sk->sk_prot->close(sk, timeout);
+		sk->sk_prot->close(sk, timeout); //yyf: 主要是调用proto的close函数
 	}
 	return 0;
 }
@@ -441,13 +443,14 @@ int inet_bind(struct socket *sock, struct sockaddr *uaddr, int addr_len)
 
 	/* If the socket has its own bind function then use it. (RAW) */
 	if (sk->sk_prot->bind) {
-		err = sk->sk_prot->bind(sk, uaddr, addr_len);
+		err = sk->sk_prot->bind(sk, uaddr, addr_len);//yyf: 如果proto有bind函数，则执行proto的bind函数
 		goto out;
 	}
 	err = -EINVAL;
-	if (addr_len < sizeof(struct sockaddr_in))
+	if (addr_len < sizeof(struct sockaddr_in))//yyf: 合法性检查，长度要超过sockaddr_in结构大小
 		goto out;
 
+    //yyf: 对sin_family进行合法性判断
 	if (addr->sin_family != AF_INET) {
 		/* Compatibility games : accept AF_UNSPEC (mapped to AF_INET)
 		 * only if s_addr is INADDR_ANY.
@@ -459,7 +462,7 @@ int inet_bind(struct socket *sock, struct sockaddr *uaddr, int addr_len)
 	}
 
 	tb_id = l3mdev_fib_table_by_index(net, sk->sk_bound_dev_if) ? : tb_id;
-	chk_addr_ret = inet_addr_type_table(net, addr->sin_addr.s_addr, tb_id);
+	chk_addr_ret = inet_addr_type_table(net, addr->sin_addr.s_addr, tb_id);//yyf: ip地址类型
 
 	/* Not specified by any standard per-se, however it breaks too
 	 * many applications when removed.  It is unfortunate since
@@ -468,15 +471,17 @@ int inet_bind(struct socket *sock, struct sockaddr *uaddr, int addr_len)
 	 * (ie. your servers still start up even if your ISDN link
 	 *  is temporarily down)
 	 */
+	//yyf: 合法性检查
 	err = -EADDRNOTAVAIL;
 	if (!net->ipv4.sysctl_ip_nonlocal_bind &&
 	    !(inet->freebind || inet->transparent) &&
 	    addr->sin_addr.s_addr != htonl(INADDR_ANY) &&
-	    chk_addr_ret != RTN_LOCAL &&
+	    chk_addr_ret != RTN_LOCAL && //yyf: 只允许地址类型为RTN_LOCAL RTN_MULTICAST RTN_BROADCAST
 	    chk_addr_ret != RTN_MULTICAST &&
 	    chk_addr_ret != RTN_BROADCAST)
 		goto out;
 
+    //yyf: 源端口 设置权限检查
 	snum = ntohs(addr->sin_port);
 	err = -EACCES;
 	if (snum && snum < inet_prot_sock(net) &&
@@ -494,16 +499,19 @@ int inet_bind(struct socket *sock, struct sockaddr *uaddr, int addr_len)
 
 	/* Check these errors (active socket, double bind). */
 	err = -EINVAL;
+    //yyf: 如果sock状态不是TCP_CLOSE，返回出错，如果inet_num已经有了，即已经有端口号了，也返回错误
 	if (sk->sk_state != TCP_CLOSE || inet->inet_num)
 		goto out_release_sock;
-
+    
+    //yyf: 设置源地址，如果ip地址是多播或者广播，则inet->inet_saddr源地址设置为0
 	inet->inet_rcv_saddr = inet->inet_saddr = addr->sin_addr.s_addr;
 	if (chk_addr_ret == RTN_MULTICAST || chk_addr_ret == RTN_BROADCAST)
 		inet->inet_saddr = 0;  /* Use device */
 
 	/* Make sure we are allowed to bind here. */
 	if ((snum || !inet->bind_address_no_port) &&
-	    sk->sk_prot->get_port(sk, snum)) {
+	    sk->sk_prot->get_port(sk, snum)) { //yyf: 获取端口号
+	    //yyf: 获取端口失败
 		inet->inet_saddr = inet->inet_rcv_saddr = 0;
 		err = -EADDRINUSE;
 		goto out_release_sock;
@@ -513,7 +521,7 @@ int inet_bind(struct socket *sock, struct sockaddr *uaddr, int addr_len)
 		sk->sk_userlocks |= SOCK_BINDADDR_LOCK;
 	if (snum)
 		sk->sk_userlocks |= SOCK_BINDPORT_LOCK;
-	inet->inet_sport = htons(inet->inet_num);
+	inet->inet_sport = htons(inet->inet_num);//yyf: 设置源端口号
 	inet->inet_daddr = 0;
 	inet->inet_dport = 0;
 	sk_dst_reset(sk);
@@ -535,9 +543,9 @@ int inet_dgram_connect(struct socket *sock, struct sockaddr *uaddr,
 	if (uaddr->sa_family == AF_UNSPEC)
 		return sk->sk_prot->disconnect(sk, flags);
 
-	if (!inet_sk(sk)->inet_num && inet_autobind(sk))
+	if (!inet_sk(sk)->inet_num && inet_autobind(sk))//yyf: 如果inet_num为0，则自动绑定个端口
 		return -EAGAIN;
-	return sk->sk_prot->connect(sk, uaddr, addr_len);
+	return sk->sk_prot->connect(sk, uaddr, addr_len);//yyf: 调用proto的connect接口
 }
 EXPORT_SYMBOL(inet_dgram_connect);
 
@@ -694,7 +702,7 @@ int inet_accept(struct socket *sock, struct socket *newsock, int flags,
 {
 	struct sock *sk1 = sock->sk;
 	int err = -EINVAL;
-	struct sock *sk2 = sk1->sk_prot->accept(sk1, flags, &err, kern);
+	struct sock *sk2 = sk1->sk_prot->accept(sk1, flags, &err, kern);//yyf: 下层accept函数处理
 
 	if (!sk2)
 		goto do_err;
@@ -706,9 +714,9 @@ int inet_accept(struct socket *sock, struct socket *newsock, int flags,
 		  (TCPF_ESTABLISHED | TCPF_SYN_RECV |
 		  TCPF_CLOSE_WAIT | TCPF_CLOSE)));
 
-	sock_graft(sk2, newsock);
+	sock_graft(sk2, newsock);//yyf: accept出的sock和new socket关联起来
 
-	newsock->state = SS_CONNECTED;
+	newsock->state = SS_CONNECTED;//yyf: 设置socket为连接状态
 	err = 0;
 	release_sock(sk2);
 do_err:
@@ -729,13 +737,14 @@ int inet_getname(struct socket *sock, struct sockaddr *uaddr,
 
 	sin->sin_family = AF_INET;
 	if (peer) {
-		if (!inet->inet_dport ||
+		if (!inet->inet_dport ||//yyf: 目的端口存在，且需要非CLOSE和非SYN_SENT状态
 		    (((1 << sk->sk_state) & (TCPF_CLOSE | TCPF_SYN_SENT)) &&
 		     peer == 1))
 			return -ENOTCONN;
+        //yyf: peer的话取 目的端口、目的地址
 		sin->sin_port = inet->inet_dport;
 		sin->sin_addr.s_addr = inet->inet_daddr;
-	} else {
+	} else {//yyf: 源端口和源地址
 		__be32 addr = inet->inet_rcv_saddr;
 		if (!addr)
 			addr = inet->inet_saddr;
@@ -754,11 +763,13 @@ int inet_sendmsg(struct socket *sock, struct msghdr *msg, size_t size)
 
 	sock_rps_record_flow(sk);
 
+    //yyf: 如果inet_num为0，且可以自动bind，则执行auto_bind
 	/* We may need to bind the socket. */
 	if (!inet_sk(sk)->inet_num && !sk->sk_prot->no_autobind &&
 	    inet_autobind(sk))
 		return -EAGAIN;
-
+    
+    //yyf: 调用proto的sendmsg函数
 	return sk->sk_prot->sendmsg(sk, msg, size);
 }
 EXPORT_SYMBOL(inet_sendmsg);
@@ -770,13 +781,16 @@ ssize_t inet_sendpage(struct socket *sock, struct page *page, int offset,
 
 	sock_rps_record_flow(sk);
 
+    //yyf: 如果端口号为0，自动绑定端口号
 	/* We may need to bind the socket. */
 	if (!inet_sk(sk)->inet_num && !sk->sk_prot->no_autobind &&
 	    inet_autobind(sk))
 		return -EAGAIN;
 
+    //yyf: 如果proto有sendpage接口，则使用proto->sendpage函数
 	if (sk->sk_prot->sendpage)
 		return sk->sk_prot->sendpage(sk, page, offset, size, flags);
+    //yyf: 否则执行默认no_sendpage函数
 	return sock_no_sendpage(sock, page, offset, size, flags);
 }
 EXPORT_SYMBOL(inet_sendpage);
@@ -790,6 +804,7 @@ int inet_recvmsg(struct socket *sock, struct msghdr *msg, size_t size,
 
 	sock_rps_record_flow(sk);
 
+    //yyf: 调用proto的recvmsg接口
 	err = sk->sk_prot->recvmsg(sk, msg, size, flags & MSG_DONTWAIT,
 				   flags & ~MSG_DONTWAIT, &addr_len);
 	if (err >= 0)
@@ -1040,7 +1055,7 @@ static struct inet_protosw inetsw_array[] =
        },
 
        {
-		.type =       SOCK_DGRAM,
+		.type =       SOCK_DGRAM, //yyf: 和udp是一个type
 		.protocol =   IPPROTO_ICMP,
 		.prot =       &ping_prot,
 		.ops =        &inet_sockraw_ops,
@@ -1077,7 +1092,7 @@ void inet_register_protosw(struct inet_protosw *p)
 		/* Check only the non-wild match. */
 		if ((INET_PROTOSW_PERMANENT & answer->flags) == 0)
 			break;
-		if (protocol == answer->protocol)
+		if (protocol == answer->protocol)//yyf: 如果已经注册过了protocol
 			goto out_permanent;
 		last_perm = lh;
 	}
@@ -1088,7 +1103,7 @@ void inet_register_protosw(struct inet_protosw *p)
 	 * non-permanent entry.  This means that when we remove this entry, the
 	 * system automatically returns to the old behavior.
 	 */
-	list_add_rcu(&p->list, last_perm);
+	list_add_rcu(&p->list, last_perm); //yyf: inet_protosw插入到inetsw[p->type]链表中
 out:
 	spin_unlock_bh(&inetsw_lock);
 

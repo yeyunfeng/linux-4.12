@@ -184,7 +184,7 @@ static void shm_rcu_free(struct rcu_head *head)
 static inline void shm_rmid(struct ipc_namespace *ns, struct shmid_kernel *s)
 {
 	list_del(&s->shm_clist);
-	ipc_rmid(&shm_ids(ns), &s->shm_perm);
+	ipc_rmid(&shm_ids(ns), &s->shm_perm);//yyf: 将shmid_kernel从idr slot中删除
 }
 
 
@@ -526,13 +526,13 @@ static int newseg(struct ipc_namespace *ns, struct ipc_params *params)
 	size_t size = params->u.size;
 	int error;
 	struct shmid_kernel *shp;
-	size_t numpages = (size + PAGE_SIZE - 1) >> PAGE_SHIFT;
+	size_t numpages = (size + PAGE_SIZE - 1) >> PAGE_SHIFT;//yyf: 页数
 	struct file *file;
 	char name[13];
 	int id;
 	vm_flags_t acctflag = 0;
 
-	if (size < SHMMIN || size > ns->shm_ctlmax)
+	if (size < SHMMIN || size > ns->shm_ctlmax)//yyf: 内存大小超过最大允许值
 		return -EINVAL;
 
 	if (numpages << PAGE_SHIFT < size)
@@ -542,6 +542,7 @@ static int newseg(struct ipc_namespace *ns, struct ipc_params *params)
 			ns->shm_tot + numpages > ns->shm_ctlall)
 		return -ENOSPC;
 
+    //yyf: 分配一个shmid_kernel内存
 	shp = ipc_rcu_alloc(sizeof(*shp));
 	if (!shp)
 		return -ENOMEM;
@@ -603,7 +604,8 @@ static int newseg(struct ipc_namespace *ns, struct ipc_params *params)
 		error = id;
 		goto no_id;
 	}
-
+    
+    //yyf: 将shmid_kernel挂到进程的链表中
 	list_add(&shp->shm_clist, &current->sysvshm.shm_clist);
 
 	/*
@@ -612,8 +614,8 @@ static int newseg(struct ipc_namespace *ns, struct ipc_params *params)
 	 */
 	file_inode(file)->i_ino = shp->shm_perm.id;
 
-	ns->shm_tot += numpages;
-	error = shp->shm_perm.id;
+	ns->shm_tot += numpages;//yyf: 总共共享内存页数量
+	error = shp->shm_perm.id;//yyf: 将id返回
 
 	ipc_unlock_object(&shp->shm_perm);
 	rcu_read_unlock();
@@ -668,7 +670,7 @@ SYSCALL_DEFINE3(shmget, key_t, key, size_t, size, int, shmflg)
 
 	shm_params.key = key;
 	shm_params.flg = shmflg;
-	shm_params.u.size = size;
+	shm_params.u.size = size;//yyf: 共享内存大小
 
 	return ipcget(ns, &shm_ids(ns), &shm_ops, &shm_params);
 }
@@ -1182,13 +1184,15 @@ long do_shmat(int shmid, char __user *shmaddr, int shmflg,
 	ipc_unlock_object(&shp->shm_perm);
 	rcu_read_unlock();
 
+    //yyf: 申请个shm_file_data结构
 	err = -ENOMEM;
 	sfd = kzalloc(sizeof(*sfd), GFP_KERNEL);
 	if (!sfd) {
 		path_put(&path);
 		goto out_nattch;
 	}
-
+    
+    //yyf: 申请file
 	file = alloc_file(&path, f_mode,
 			  is_file_hugepages(shp->shm_file) ?
 				&shm_file_operations_huge :
@@ -1200,7 +1204,7 @@ long do_shmat(int shmid, char __user *shmaddr, int shmflg,
 		goto out_nattch;
 	}
 
-	file->private_data = sfd;
+	file->private_data = sfd; //yyf: file和shm_file_data关联
 	file->f_mapping = shp->shm_file->f_mapping;
 	sfd->id = shp->shm_perm.id;
 	sfd->ns = get_ipc_ns(ns);
@@ -1225,6 +1229,7 @@ long do_shmat(int shmid, char __user *shmaddr, int shmflg,
 			goto invalid;
 	}
 
+    //yyf: 映射，file和vma关联
 	addr = do_mmap_pgoff(file, addr, size, prot, flags, 0, &populate, NULL);
 	*raddr = addr;
 	err = 0;

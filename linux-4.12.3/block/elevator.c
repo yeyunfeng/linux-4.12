@@ -44,12 +44,12 @@
 #include "blk-wbt.h"
 
 static DEFINE_SPINLOCK(elv_list_lock);
-static LIST_HEAD(elv_list);
+static LIST_HEAD(elv_list);//yyf: 注册elevator_type的全局链表
 
 /*
  * Merge hash stuff.
  */
-#define rq_hash_key(rq)		(blk_rq_pos(rq) + blk_rq_sectors(rq))
+#define rq_hash_key(rq)		(blk_rq_pos(rq) + blk_rq_sectors(rq)) //yyf: 算出是结束扇区号
 
 /*
  * Query io scheduler to see if the current process issuing bio may be
@@ -59,7 +59,8 @@ static int elv_iosched_allow_bio_merge(struct request *rq, struct bio *bio)
 {
 	struct request_queue *q = rq->q;
 	struct elevator_queue *e = q->elevator;
-
+    
+//yyf: 主要是回调elevator的钩子接口来判断是否允许merge
 	if (e->uses_mq && e->type->ops.mq.allow_merge)
 		return e->type->ops.mq.allow_merge(q, rq, bio);
 	else if (!e->uses_mq && e->type->ops.sq.elevator_allow_bio_merge_fn)
@@ -73,10 +74,10 @@ static int elv_iosched_allow_bio_merge(struct request *rq, struct bio *bio)
  */
 bool elv_bio_merge_ok(struct request *rq, struct bio *bio)
 {
-	if (!blk_rq_merge_ok(rq, bio))
+	if (!blk_rq_merge_ok(rq, bio))//yyf: 先看块层是否允许合并
 		return false;
 
-	if (!elv_iosched_allow_bio_merge(rq, bio))
+	if (!elv_iosched_allow_bio_merge(rq, bio))//yyf: 再看elevator是否允许合并
 		return false;
 
 	return true;
@@ -87,7 +88,7 @@ static struct elevator_type *elevator_find(const char *name)
 {
 	struct elevator_type *e;
 
-	list_for_each_entry(e, &elv_list, list) {
+	list_for_each_entry(e, &elv_list, list) {//yyf: 遍历elv_list链表，查找相同名字的elevator_type
 		if (!strcmp(e->elevator_name, name))
 			return e;
 	}
@@ -97,7 +98,7 @@ static struct elevator_type *elevator_find(const char *name)
 
 static void elevator_put(struct elevator_type *e)
 {
-	module_put(e->elevator_owner);
+	module_put(e->elevator_owner);//yyf: 释放模块引用计数
 }
 
 static struct elevator_type *elevator_get(const char *name, bool try_loading)
@@ -107,14 +108,14 @@ static struct elevator_type *elevator_get(const char *name, bool try_loading)
 	spin_lock(&elv_list_lock);
 
 	e = elevator_find(name);
-	if (!e && try_loading) {
+	if (!e && try_loading) {//yyf: 如果没有找到elevator，且try_loading设置时，尝试加载对应模块
 		spin_unlock(&elv_list_lock);
 		request_module("%s-iosched", name);
 		spin_lock(&elv_list_lock);
 		e = elevator_find(name);
 	}
 
-	if (e && !try_module_get(e->elevator_owner))
+	if (e && !try_module_get(e->elevator_owner))//yyf: 找到elevator_type后，get下模块索引
 		e = NULL;
 
 	spin_unlock(&elv_list_lock);
@@ -122,7 +123,7 @@ static struct elevator_type *elevator_get(const char *name, bool try_loading)
 	return e;
 }
 
-static char chosen_elevator[ELV_NAME_MAX];
+static char chosen_elevator[ELV_NAME_MAX];//yyf: 保存选择的elevator算法
 
 static int __init elevator_setup(char *str)
 {
@@ -134,7 +135,7 @@ static int __init elevator_setup(char *str)
 	return 1;
 }
 
-__setup("elevator=", elevator_setup);
+__setup("elevator=", elevator_setup);//yyf: 启动参数可以设置elevator是哪个
 
 /* called during boot to load the elevator chosen by the elevator param */
 void __init load_default_elevator_module(void)
@@ -145,7 +146,7 @@ void __init load_default_elevator_module(void)
 		return;
 
 	spin_lock(&elv_list_lock);
-	e = elevator_find(chosen_elevator);
+	e = elevator_find(chosen_elevator);//yyf: 默认是从chosen_elevator名字查找elevator_type
 	spin_unlock(&elv_list_lock);
 
 	if (!e)
@@ -159,10 +160,10 @@ struct elevator_queue *elevator_alloc(struct request_queue *q,
 {
 	struct elevator_queue *eq;
 
-	eq = kzalloc_node(sizeof(*eq), GFP_KERNEL, q->node);
+	eq = kzalloc_node(sizeof(*eq), GFP_KERNEL, q->node);//yyf: slab申请elevator_queue
 	if (unlikely(!eq))
 		return NULL;
-
+//yyf: 初始化elevator_queue，该结构是连接request_queue和elevator_type的
 	eq->type = e;
 	kobject_init(&eq->kobj, &elv_ktype);
 	mutex_init(&eq->sysfs_lock);
@@ -193,7 +194,7 @@ int elevator_init(struct request_queue *q, char *name)
 	 */
 	lockdep_assert_held(&q->sysfs_lock);
 
-	if (unlikely(q->elevator))
+	if (unlikely(q->elevator))//yyf: 首先需要有elevator_queue
 		return 0;
 
 	INIT_LIST_HEAD(&q->queue_head);
@@ -202,7 +203,7 @@ int elevator_init(struct request_queue *q, char *name)
 	q->boundary_rq = NULL;
 
 	if (name) {
-		e = elevator_get(name, true);
+		e = elevator_get(name, true);//yyf: 如果有name参数，则查找该名字的elevator_type，找不到就返回错误
 		if (!e)
 			return -EINVAL;
 	}
@@ -213,7 +214,7 @@ int elevator_init(struct request_queue *q, char *name)
 	 * as we could be running off async and request_module() isn't
 	 * allowed from async.
 	 */
-	if (!e && !q->mq_ops && *chosen_elevator) {
+	if (!e && !q->mq_ops && *chosen_elevator) {//yyf: 如果启动参数有设置选择的elevator，则查找
 		e = elevator_get(chosen_elevator, false);
 		if (!e)
 			printk(KERN_ERR "I/O scheduler %s not found\n",
@@ -229,24 +230,24 @@ int elevator_init(struct request_queue *q, char *name)
 		 */
 		if (q->mq_ops) {
 			if (q->nr_hw_queues == 1)
-				e = elevator_get("mq-deadline", false);
+				e = elevator_get("mq-deadline", false);//yyf: 对于mq，hw_queue=1时，默认选择mq-deadline
 			if (!e)
 				return 0;
 		} else
-			e = elevator_get(CONFIG_DEFAULT_IOSCHED, false);
+			e = elevator_get(CONFIG_DEFAULT_IOSCHED, false);//yyf: 前面都找不到的情况下，则查找config配置的算法
 
 		if (!e) {
 			printk(KERN_ERR
 				"Default I/O scheduler not found. " \
 				"Using noop.\n");
-			e = elevator_get("noop", false);
+			e = elevator_get("noop", false);//yyf: 如果还是都找不到，则默认用noop电梯调度
 		}
 	}
 
 	if (e->uses_mq)
 		err = blk_mq_init_sched(q, e);
 	else
-		err = e->ops.sq.elevator_init_fn(q, e);
+		err = e->ops.sq.elevator_init_fn(q, e);//yyf: 调用elevator ops的elevator_init_fn初始化
 	if (err)
 		elevator_put(e);
 	return err;
@@ -258,7 +259,7 @@ void elevator_exit(struct request_queue *q, struct elevator_queue *e)
 	mutex_lock(&e->sysfs_lock);
 	if (e->uses_mq && e->type->ops.mq.exit_sched)
 		blk_mq_exit_sched(q, e);
-	else if (!e->uses_mq && e->type->ops.sq.elevator_exit_fn)
+	else if (!e->uses_mq && e->type->ops.sq.elevator_exit_fn)//yyf: 退出则只需elevator ops的elevator_exit_fn钩子函数
 		e->type->ops.sq.elevator_exit_fn(e);
 	mutex_unlock(&e->sysfs_lock);
 
@@ -274,7 +275,7 @@ static inline void __elv_rqhash_del(struct request *rq)
 
 void elv_rqhash_del(struct request_queue *q, struct request *rq)
 {
-	if (ELV_ON_HASH(rq))
+	if (ELV_ON_HASH(rq)) //yyf: rq_flags & RQF_HASHED 标记
 		__elv_rqhash_del(rq);
 }
 EXPORT_SYMBOL_GPL(elv_rqhash_del);
@@ -284,15 +285,15 @@ void elv_rqhash_add(struct request_queue *q, struct request *rq)
 	struct elevator_queue *e = q->elevator;
 
 	BUG_ON(ELV_ON_HASH(rq));
-	hash_add(e->hash, &rq->hash, rq_hash_key(rq));
-	rq->rq_flags |= RQF_HASHED;
+	hash_add(e->hash, &rq->hash, rq_hash_key(rq)); //yyf: 将rq hash节点加入到elevator_queue的hash数组
+	rq->rq_flags |= RQF_HASHED; //yyf: 设置rq->rq_flags的RQF_HASHED标记位
 }
 EXPORT_SYMBOL_GPL(elv_rqhash_add);
 
 void elv_rqhash_reposition(struct request_queue *q, struct request *rq)
 {
-	__elv_rqhash_del(rq);
-	elv_rqhash_add(q, rq);
+	__elv_rqhash_del(rq); //yyf: 从原有的hash中删除
+	elv_rqhash_add(q, rq); //yyf: 重新加入hash数组链表
 }
 
 struct request *elv_rqhash_find(struct request_queue *q, sector_t offset)
@@ -304,12 +305,12 @@ struct request *elv_rqhash_find(struct request_queue *q, sector_t offset)
 	hash_for_each_possible_safe(e->hash, rq, next, hash, offset) {
 		BUG_ON(!ELV_ON_HASH(rq));
 
-		if (unlikely(!rq_mergeable(rq))) {
+		if (unlikely(!rq_mergeable(rq))) { //yyf: 如果rq不能merge，则将rq从elevator_queue的hash数组链表删除
 			__elv_rqhash_del(rq);
 			continue;
 		}
 
-		if (rq_hash_key(rq) == offset)
+		if (rq_hash_key(rq) == offset)//rq的结束扇区和offset扇区相等，则找到了该rq
 			return rq;
 	}
 
@@ -329,13 +330,15 @@ void elv_rb_add(struct rb_root *root, struct request *rq)
 	while (*p) {
 		parent = *p;
 		__rq = rb_entry(parent, struct request, rb_node);
-
+        
+//yyf: 红黑树 按rq的扇区号排序
 		if (blk_rq_pos(rq) < blk_rq_pos(__rq))
 			p = &(*p)->rb_left;
 		else if (blk_rq_pos(rq) >= blk_rq_pos(__rq))
 			p = &(*p)->rb_right;
 	}
-
+    
+//yyf: 将rq插入到红黑树中
 	rb_link_node(&rq->rb_node, parent, p);
 	rb_insert_color(&rq->rb_node, root);
 }
@@ -344,11 +347,12 @@ EXPORT_SYMBOL(elv_rb_add);
 void elv_rb_del(struct rb_root *root, struct request *rq)
 {
 	BUG_ON(RB_EMPTY_NODE(&rq->rb_node));
-	rb_erase(&rq->rb_node, root);
+	rb_erase(&rq->rb_node, root);//yyf: 从红黑树中删除rq
 	RB_CLEAR_NODE(&rq->rb_node);
 }
 EXPORT_SYMBOL(elv_rb_del);
 
+//yyf: 红黑树中查找sector对应的rq
 struct request *elv_rb_find(struct rb_root *root, sector_t sector)
 {
 	struct rb_node *n = root->rb_node;
@@ -362,7 +366,7 @@ struct request *elv_rb_find(struct rb_root *root, sector_t sector)
 		else if (sector > blk_rq_pos(rq))
 			n = n->rb_right;
 		else
-			return rq;
+			return rq; //yyf: 如果rq的扇区等于sector，则找到
 	}
 
 	return NULL;
@@ -382,19 +386,19 @@ void elv_dispatch_sort(struct request_queue *q, struct request *rq)
 	if (q->last_merge == rq)
 		q->last_merge = NULL;
 
-	elv_rqhash_del(q, rq);
+	elv_rqhash_del(q, rq);//yyf: 先从hash链表删除
 
 	q->nr_sorted--;
 
 	boundary = q->end_sector;
-	list_for_each_prev(entry, &q->queue_head) {
+	list_for_each_prev(entry, &q->queue_head) { //yyf: 遍历q的queuelist链表
 		struct request *pos = list_entry_rq(entry);
 
-		if (req_op(rq) != req_op(pos))
+		if (req_op(rq) != req_op(pos))//yyf: 如果请求操作不一样，则跳出
 			break;
-		if (rq_data_dir(rq) != rq_data_dir(pos))
+		if (rq_data_dir(rq) != rq_data_dir(pos)) //yyf: 读写操作不一样，则跳出
 			break;
-		if (pos->rq_flags & (RQF_STARTED | RQF_SOFTBARRIER))
+		if (pos->rq_flags & (RQF_STARTED | RQF_SOFTBARRIER))//yyf: RQF_STARTED | RQF_SOFTBARRIER如果是这2种标记，则跳出
 			break;
 		if (blk_rq_pos(rq) >= boundary) {
 			if (blk_rq_pos(pos) < boundary)
@@ -403,11 +407,11 @@ void elv_dispatch_sort(struct request_queue *q, struct request *rq)
 			if (blk_rq_pos(pos) >= boundary)
 				break;
 		}
-		if (blk_rq_pos(rq) >= blk_rq_pos(pos))
+		if (blk_rq_pos(rq) >= blk_rq_pos(pos)) //yyf: 如果rq的扇区大于等于当前pos请求位置
 			break;
 	}
 
-	list_add(&rq->queuelist, entry);
+	list_add(&rq->queuelist, entry);//yyf: 挂入到queuelist链表
 }
 EXPORT_SYMBOL(elv_dispatch_sort);
 
@@ -421,16 +425,17 @@ void elv_dispatch_add_tail(struct request_queue *q, struct request *rq)
 	if (q->last_merge == rq)
 		q->last_merge = NULL;
 
-	elv_rqhash_del(q, rq);
+	elv_rqhash_del(q, rq); //yyf: 从hash数组链表删除
 
 	q->nr_sorted--;
 
-	q->end_sector = rq_end_sector(rq);
-	q->boundary_rq = rq;
-	list_add_tail(&rq->queuelist, &q->queue_head);
+	q->end_sector = rq_end_sector(rq); //yyf: q最大扇区
+	q->boundary_rq = rq; //yyf:最大扇区对应的边界rq
+	list_add_tail(&rq->queuelist, &q->queue_head); //yyf: 挂入到q->queue_head队列尾
 }
 EXPORT_SYMBOL(elv_dispatch_add_tail);
 
+//yyf: 这个是合并bio到rq的
 enum elv_merge elv_merge(struct request_queue *q, struct request **req,
 		struct bio *bio)
 {
@@ -446,6 +451,7 @@ enum elv_merge elv_merge(struct request_queue *q, struct request **req,
 	if (blk_queue_nomerges(q) || !bio_mergeable(bio))
 		return ELEVATOR_NO_MERGE;
 
+//yyf: bio和q->last_merge缓存的rq做一次merge
 	/*
 	 * First try one-hit cache.
 	 */
@@ -457,19 +463,20 @@ enum elv_merge elv_merge(struct request_queue *q, struct request **req,
 			return ret;
 		}
 	}
-
+//yyf: noxmerges就是和前面的q->last_merge缓存进行merge的一次机会，如果前面merge不了，则返回
 	if (blk_queue_noxmerges(q))
 		return ELEVATOR_NO_MERGE;
 
+//yyf: 从hash数组链表中找对应sector可back merge的rq，elv_rqhash_find里面是判断rq的扇区结束是否和bio sector相等
 	/*
 	 * See if our hash lookup can find a potential backmerge.
 	 */
 	__rq = elv_rqhash_find(q, bio->bi_iter.bi_sector);
-	if (__rq && elv_bio_merge_ok(__rq, bio)) {
+	if (__rq && elv_bio_merge_ok(__rq, bio)) { //yyf: 如果找到rq，则说明扇区和bio是相连的，再判断是否具备可merge的其他条件
 		*req = __rq;
 		return ELEVATOR_BACK_MERGE;
 	}
-
+//yyf: 最后再看看elevator里的merge相关 钩子接口
 	if (e->uses_mq && e->type->ops.mq.request_merge)
 		return e->type->ops.mq.request_merge(q, req, bio);
 	else if (!e->uses_mq && e->type->ops.sq.elevator_merge_fn)
@@ -490,7 +497,7 @@ bool elv_attempt_insert_merge(struct request_queue *q, struct request *rq)
 	struct request *__rq;
 	bool ret;
 
-	if (blk_queue_nomerges(q))
+	if (blk_queue_nomerges(q))//yyf: 判断request_queue是否就不可merge
 		return false;
 
 	/*
@@ -499,7 +506,7 @@ bool elv_attempt_insert_merge(struct request_queue *q, struct request *rq)
 	if (q->last_merge && blk_attempt_req_merge(q, q->last_merge, rq))
 		return true;
 
-	if (blk_queue_noxmerges(q))
+	if (blk_queue_noxmerges(q))//yyf: request_queue noxmerges判断
 		return false;
 
 	ret = false;
@@ -549,7 +556,7 @@ void elv_merge_requests(struct request_queue *q, struct request *rq,
 			e->type->ops.sq.elevator_merge_req_fn(q, rq, next);
 	}
 
-	elv_rqhash_reposition(q, rq);
+	elv_rqhash_reposition(q, rq); //yyf: 重新调整下hash链表
 
 	if (next_sorted) {
 		elv_rqhash_del(q, next);
@@ -851,7 +858,7 @@ int elv_register_queue(struct request_queue *q)
 	struct elevator_queue *e = q->elevator;
 	int error;
 
-	error = kobject_add(&e->kobj, &q->kobj, "%s", "iosched");
+	error = kobject_add(&e->kobj, &q->kobj, "%s", "iosched");//yyf: 在sys下request_queue目录注册elevator_queue，目录名为iosched
 	if (!error) {
 		struct elv_fs_entry *attr = e->type->elevator_attrs;
 		if (attr) {
@@ -1086,7 +1093,7 @@ static int __elevator_change(struct request_queue *q, const char *name)
 static inline bool elv_support_iosched(struct request_queue *q)
 {
 	if (q->mq_ops && q->tag_set && (q->tag_set->flags &
-				BLK_MQ_F_NO_SCHED))
+				BLK_MQ_F_NO_SCHED)) //yyf: 对于mq，则有不支持iosched调度算法的情况
 		return false;
 	return true;
 }
@@ -1095,7 +1102,8 @@ ssize_t elv_iosched_store(struct request_queue *q, const char *name,
 			  size_t count)
 {
 	int ret;
-
+    
+//yyf: 如果是mq的mq_ops存在，或者q->request_fn存在，或者q不支持调度算法，则不能通过proc设置elevator
 	if (!(q->mq_ops || q->request_fn) || !elv_support_iosched(q))
 		return count;
 
@@ -1141,6 +1149,7 @@ ssize_t elv_iosched_show(struct request_queue *q, char *name)
 	return len;
 }
 
+//yyf: rq红黑树节点的前一个
 struct request *elv_rb_former_request(struct request_queue *q,
 				      struct request *rq)
 {
@@ -1153,6 +1162,7 @@ struct request *elv_rb_former_request(struct request_queue *q,
 }
 EXPORT_SYMBOL(elv_rb_former_request);
 
+//yyf: rq红黑树节点的后一个
 struct request *elv_rb_latter_request(struct request_queue *q,
 				      struct request *rq)
 {

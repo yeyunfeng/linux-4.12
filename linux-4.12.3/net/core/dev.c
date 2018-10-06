@@ -4013,7 +4013,8 @@ int netdev_rx_handler_register(struct net_device *dev,
 {
 	if (netdev_is_rx_handler_busy(dev))
 		return -EBUSY;
-
+    
+    //yyf: 注册接收函数和参数
 	/* Note: rx_handler_data must be set before rx_handler */
 	rcu_assign_pointer(dev->rx_handler_data, rx_handler_data);
 	rcu_assign_pointer(dev->rx_handler, rx_handler);
@@ -4109,7 +4110,8 @@ another_round:
 	skb->skb_iif = skb->dev->ifindex;
 
 	__this_cpu_inc(softnet_data.processed);
-
+    
+//yyf: 先对vlan报文做处理
 	if (skb->protocol == cpu_to_be16(ETH_P_8021Q) ||
 	    skb->protocol == cpu_to_be16(ETH_P_8021AD)) {
 		skb = skb_vlan_untag(skb);
@@ -4122,7 +4124,8 @@ another_round:
 
 	if (pfmemalloc)
 		goto skip_taps;
-
+    
+//yyf: 执行packet_type的func回调函数, tcpdump就是在这个阶段的回调函数中抓包的
 	list_for_each_entry_rcu(ptype, &ptype_all, list) {
 		if (pt_prev)
 			ret = deliver_skb(skb, pt_prev, orig_dev);
@@ -4150,14 +4153,15 @@ skip_taps:
 skip_classify:
 	if (pfmemalloc && !skb_pfmemalloc_protocol(skb))
 		goto drop;
-
+    
+//yyf: 如果是vlan skb，则由vlan处理
 	if (skb_vlan_tag_present(skb)) {
 		if (pt_prev) {
 			ret = deliver_skb(skb, pt_prev, orig_dev);
 			pt_prev = NULL;
 		}
 		if (vlan_do_receive(&skb))
-			goto another_round;
+			goto another_round;//yyf: 处理完后往回重新处理skb
 		else if (unlikely(!skb))
 			goto out;
 	}
@@ -4168,7 +4172,7 @@ skip_classify:
 			ret = deliver_skb(skb, pt_prev, orig_dev);
 			pt_prev = NULL;
 		}
-		switch (rx_handler(&skb)) {
+		switch (rx_handler(&skb)) {//yyf: 执行网卡设备的rx_handler函数接收
 		case RX_HANDLER_CONSUMED:
 			ret = NET_RX_SUCCESS;
 			goto out;
@@ -7403,7 +7407,7 @@ int register_netdevice(struct net_device *dev)
 
 	/* Init, if this function is available */
 	if (dev->netdev_ops->ndo_init) {
-		ret = dev->netdev_ops->ndo_init(dev);
+		ret = dev->netdev_ops->ndo_init(dev);//yyf: 执行初始化
 		if (ret) {
 			if (ret > 0)
 				ret = -EIO;
@@ -7914,7 +7918,7 @@ struct net_device *alloc_netdev_mqs(int sizeof_priv, const char *name,
 	hash_init(dev->qdisc_hash);
 #endif
 	dev->priv_flags = IFF_XMIT_DST_RELEASE | IFF_XMIT_DST_RELEASE_PERM;
-	setup(dev);
+	setup(dev);//yyf: 执行回调函数
 
 	if (!dev->tx_queue_len) {
 		dev->priv_flags |= IFF_NO_QUEUE;

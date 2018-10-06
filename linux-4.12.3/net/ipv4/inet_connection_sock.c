@@ -869,21 +869,22 @@ int inet_csk_listen_start(struct sock *sk, int backlog)
 
 	reqsk_queue_alloc(&icsk->icsk_accept_queue);
 
-	sk->sk_max_ack_backlog = backlog;
+	sk->sk_max_ack_backlog = backlog; //yyf: 设置sock的最大backlog
 	sk->sk_ack_backlog = 0;
-	inet_csk_delack_init(sk);
+	inet_csk_delack_init(sk); //yyf: icsk_ack清零
 
 	/* There is race window here: we announce ourselves listening,
 	 * but this transition is still not validated by get_port().
 	 * It is OK, because this socket enters to hash table only
 	 * after validation is complete.
 	 */
-	sk_state_store(sk, TCP_LISTEN);
+	sk_state_store(sk, TCP_LISTEN);//yyf: 设置sock为TCP_LISTEN状态
+	//yyf: 获取源端口
 	if (!sk->sk_prot->get_port(sk, inet->inet_num)) {
 		inet->inet_sport = htons(inet->inet_num);
 
 		sk_dst_reset(sk);
-		err = sk->sk_prot->hash(sk);
+		err = sk->sk_prot->hash(sk);//yyf: 将sock加入hash
 
 		if (likely(!err))
 			return 0;

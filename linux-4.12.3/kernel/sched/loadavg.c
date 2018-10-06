@@ -358,7 +358,7 @@ void calc_global_load(unsigned long ticks)
 	long active, delta;
 
 	sample_window = READ_ONCE(calc_load_update);
-	if (time_before(jiffies, sample_window + 10))
+	if (time_before(jiffies, sample_window + 10))//yyf: 如果距离上次更新在10个jiffies内，则不进行更新负载
 		return;
 
 	/*

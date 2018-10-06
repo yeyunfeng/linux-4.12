@@ -370,16 +370,16 @@ static inline void free_part_stats(struct hd_struct *part)
 
 static inline void part_inc_in_flight(struct hd_struct *part, int rw)
 {
-	atomic_inc(&part->in_flight[rw]);
+	atomic_inc(&part->in_flight[rw]);//yyf: 增加分区的in_flight统计
 	if (part->partno)
-		atomic_inc(&part_to_disk(part)->part0.in_flight[rw]);
+		atomic_inc(&part_to_disk(part)->part0.in_flight[rw]);//yyf: 同时也增加到disk part0的统计中
 }
 
 static inline void part_dec_in_flight(struct hd_struct *part, int rw)
 {
 	atomic_dec(&part->in_flight[rw]);
 	if (part->partno)
-		atomic_dec(&part_to_disk(part)->part0.in_flight[rw]);
+		atomic_dec(&part_to_disk(part)->part0.in_flight[rw]);//yyf: 同时减去disk part0的in_flight
 }
 
 static inline int part_in_flight(struct hd_struct *part)

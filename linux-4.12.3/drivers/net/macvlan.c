@@ -1158,16 +1158,18 @@ static int macvlan_port_create(struct net_device *dev)
 	if (dev->type != ARPHRD_ETHER || dev->flags & IFF_LOOPBACK)
 		return -EINVAL;
 
-	if (netdev_is_rx_handler_busy(dev))
+	if (netdev_is_rx_handler_busy(dev))//yyf: rx_handler已经有函数了，则返回
 		return -EBUSY;
 
-	port = kzalloc(sizeof(*port), GFP_KERNEL);
+	port = kzalloc(sizeof(*port), GFP_KERNEL);//yyf: 申请个macvlan_port结构内存
 	if (port == NULL)
 		return -ENOMEM;
 
 	port->dev = dev;
-	ether_addr_copy(port->perm_addr, dev->dev_addr);
+	ether_addr_copy(port->perm_addr, dev->dev_addr);//yyf: 拷贝mac地址
 	INIT_LIST_HEAD(&port->vlans);
+    
+    //yyf: 初始化hash链表
 	for (i = 0; i < MACVLAN_HASH_SIZE; i++)
 		INIT_HLIST_HEAD(&port->vlan_hash[i]);
 	for (i = 0; i < MACVLAN_HASH_SIZE; i++)
@@ -1176,6 +1178,7 @@ static int macvlan_port_create(struct net_device *dev)
 	skb_queue_head_init(&port->bc_queue);
 	INIT_WORK(&port->bc_work, macvlan_process_broadcast);
 
+    //yyf: 注册网口接收函数macvlan_handle_frame，参数为macvlan_port
 	err = netdev_rx_handler_register(dev, macvlan_handle_frame, port);
 	if (err)
 		kfree(port);

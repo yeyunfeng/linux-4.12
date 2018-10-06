@@ -248,7 +248,7 @@ static struct super_block *alloc_super(struct file_system_type *type, int flags,
 	s->s_op = &default_op;
 	s->s_time_gran = 1000000000;
 	s->cleancache_poolid = CLEANCACHE_NO_POOL;
-
+//yyf: 默认初始化super_block的shrink
 	s->s_shrink.seeks = DEFAULT_SEEKS;
 	s->s_shrink.scan_objects = super_cache_scan;
 	s->s_shrink.count_objects = super_cache_count;
@@ -503,7 +503,7 @@ retry:
 	}
 	if (!s) {
 		spin_unlock(&sb_lock);
-		s = alloc_super(type, (flags & ~MS_SUBMOUNT), user_ns);
+		s = alloc_super(type, (flags & ~MS_SUBMOUNT), user_ns);//yyf: 分配一个super_block结构
 		if (!s)
 			return ERR_PTR(-ENOMEM);
 		goto retry;
@@ -518,11 +518,11 @@ retry:
 	}
 	s->s_type = type;
 	strlcpy(s->s_id, type->name, sizeof(s->s_id));
-	list_add_tail(&s->s_list, &super_blocks);
-	hlist_add_head(&s->s_instances, &type->fs_supers);
+	list_add_tail(&s->s_list, &super_blocks); //yyf: 将super_block加入到全局 super_blocks 链表
+	hlist_add_head(&s->s_instances, &type->fs_supers); //yyf: 将super_block s_instances成员加入到file_system_type的fs_supers链表
 	spin_unlock(&sb_lock);
 	get_filesystem(type);
-	register_shrinker(&s->s_shrink);
+	register_shrinker(&s->s_shrink);//yyf: 每个super_block都有个shrink，注册到一个全局链表
 	return s;
 }
 
@@ -920,7 +920,7 @@ void emergency_remount(void)
 	work = kmalloc(sizeof(*work), GFP_ATOMIC);
 	if (work) {
 		INIT_WORK(work, do_emergency_remount);
-		schedule_work(work);
+		schedule_work(work); //yyf: 通过工作队列work去执行remount操作
 	}
 }
 
@@ -945,7 +945,7 @@ int get_anon_bdev(dev_t *p)
 	if (ida_pre_get(&unnamed_dev_ida, GFP_ATOMIC) == 0)
 		return -ENOMEM;
 	spin_lock(&unnamed_dev_lock);
-	error = ida_get_new_above(&unnamed_dev_ida, unnamed_dev_start, &dev);
+	error = ida_get_new_above(&unnamed_dev_ida, unnamed_dev_start, &dev);//yyf: ida方式获取一个dev设备号
 	if (!error)
 		unnamed_dev_start = dev + 1;
 	spin_unlock(&unnamed_dev_lock);
@@ -955,7 +955,7 @@ int get_anon_bdev(dev_t *p)
 	else if (error)
 		return -EAGAIN;
 
-	if (dev >= (1 << MINORBITS)) {
+	if (dev >= (1 << MINORBITS)) {//yyf: dev不能超过 1<<20
 		spin_lock(&unnamed_dev_lock);
 		ida_remove(&unnamed_dev_ida, dev);
 		if (unnamed_dev_start > dev)
@@ -963,7 +963,7 @@ int get_anon_bdev(dev_t *p)
 		spin_unlock(&unnamed_dev_lock);
 		return -EMFILE;
 	}
-	*p = MKDEV(0, dev & MINORMASK);
+	*p = MKDEV(0, dev & MINORMASK);//yyf: 主设备号是0
 	return 0;
 }
 EXPORT_SYMBOL(get_anon_bdev);
@@ -1220,7 +1220,7 @@ mount_fs(struct file_system_type *type, int flags, const char *name, void *data)
 			goto out_free_secdata;
 	}
 
-	root = type->mount(type, flags, name, data);
+	root = type->mount(type, flags, name, data); //yyf: 回调file_system_type的mount接口, dentry和super_block都是mount里分配
 	if (IS_ERR(root)) {
 		error = PTR_ERR(root);
 		goto out_free_secdata;
